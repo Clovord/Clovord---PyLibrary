@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.10] - 2026-05-05
+### Fixed
+- update version to 0.1.10 and add gateway shutdown event handling
+
+### Docs
+- update for v0.1.10dev9
+
 ## [0.1.10dev9] - 2026-05-03
 ### Changed
 - update handle function signatures and improve payload handling across gateway events

@@ -49,14 +49,14 @@ bot.run("YourBotToken")
 
 <!-- latest-release-notes:start -->
 ## Latest Release Notes
-Version: `0.1.10dev9`
-Last commit: `refactor: update handle function signatures and improve payload handling across gateway events`
+Version: `0.1.10`
+Last commit: `fix: update version to 0.1.10 and add gateway shutdown event handling`
 
-### Changed
-- update handle function signatures and improve payload handling across gateway events
+### Fixed
+- update version to 0.1.10 and add gateway shutdown event handling
 
 ### Docs
-- update for v0.1.10dev8
+- update for v0.1.10dev9
 
 See full history in CHANGELOG.md.
 <!-- latest-release-notes:end -->
