@@ -12,10 +12,11 @@ async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None
     username, user_id = _extract_ready_identity(data_part)
     bot._logger.info("Connected to gateway as %s (%s)", username, user_id)
 
-    try:
-        await bot.gateway.update_presence("online")
-    except Exception as exc:
-        bot._logger.warning("Failed to set online presence: %s", exc)
+    if bot._auto_online_presence and not bot._presence_set_explicitly:
+        try:
+            await bot.gateway.update_presence("online", _from_ready=True)
+        except Exception as exc:
+            bot._logger.warning("Failed to set online presence: %s", exc)
 
     await bot.events.dispatch(INTERNAL_EVENT_NAME)
 

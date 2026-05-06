@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "clovord.py"
-version = "0.1.10"
+version = "0.1.11"
 description = "Official Python library for the Clovord platform."
 readme = "README.md"
 license = "MIT"
@@ -26,7 +26,7 @@ classifiers = [
   "Typing :: Typed"
 ]
 dependencies = [
-  "aiohttp>=3.9.0"
+  "aiohttp>=3.9,<4"
 ]
 
 [project.optional-dependencies]

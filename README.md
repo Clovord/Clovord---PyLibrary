@@ -18,6 +18,7 @@ pip install -e .[dev]
 
 ```python
 import clovord
+import os
 from clovord import Bot
 import json
 
@@ -38,7 +39,7 @@ async def on_ready_payload(data):
     print("READY PAYLOAD:")
     print(json.dumps(data, indent=2, ensure_ascii=False))
 
-bot.run("YourBotToken") 
+bot.run(os.environ["BOT_TOKEN"])
 ```
 
 ## Overview

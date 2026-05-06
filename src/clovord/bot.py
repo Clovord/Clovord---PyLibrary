@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from .errors import ClovordInvalidTokenError
-from .events import EventManager
+from .events import EventErrorPolicy, EventManager
 from .gateway.events.dispatcher import dispatch_gateway_event
 from .gateway.handler import GatewayClient
 from .http import HTTPClient
@@ -20,11 +20,20 @@ EventCallback = Callable[..., Awaitable[None]]
 class Bot:
     """Main SDK entrypoint for gateway and API interactions."""
 
-    def __init__(self, *, intents: Intents | int | None = None) -> None:
-        self.events = EventManager()
+    def __init__(
+        self,
+        *,
+        intents: Intents | int | None = None,
+        auto_online_presence: bool = True,
+        event_error_policy: EventErrorPolicy = "log",
+    ) -> None:
+        self.events = EventManager(error_policy=event_error_policy)
         self.http = HTTPClient()
         self.gateway = GatewayClient(self)
         self._logger = get_logger()
+        self._run_task: asyncio.Task[None] | None = None
+        self._auto_online_presence = auto_online_presence
+        self._presence_set_explicitly = False
         self._token: str | None = None
         self._is_running = False
         self._intents = Intents.none()
@@ -79,7 +88,25 @@ class Bot:
             asyncio.run(self.start(token))
             return None
 
-        return loop.create_task(self.start(token))
+        task = loop.create_task(self.start(token))
+        self._run_task = task
+
+        def _on_done(done_task: asyncio.Task[None]) -> None:
+            if self._run_task is done_task:
+                self._run_task = None
+            if done_task.cancelled():
+                return
+
+            try:
+                exc = done_task.exception()
+            except asyncio.CancelledError:
+                return
+
+            if exc is not None:
+                self._logger.exception("Bot run task failed", exc_info=exc)
+
+        task.add_done_callback(_on_done)
+        return task
 
     async def close(self) -> None:
         await self.gateway.close()

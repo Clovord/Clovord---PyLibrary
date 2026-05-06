@@ -2,3 +2,9 @@ dist/
 *.egg-info/
 __pycache__/
 *.pyc
+.env
+.env.*
+.venv/
+venv/
+secrets.*
+*.token

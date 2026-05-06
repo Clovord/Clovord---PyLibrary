@@ -22,6 +22,13 @@ README_MARKER_START = "<!-- latest-release-notes:start -->"
 README_MARKER_END = "<!-- latest-release-notes:end -->"
 
 
+def escape_markdown_text(text: str) -> str:
+    escaped = text.replace("\\", "\\\\")
+    for char in ("`", "*", "_", "[", "]", "(", ")", "<", ">"):
+        escaped = escaped.replace(char, f"\\{char}")
+    return escaped
+
+
 def run_git(args: list[str]) -> str:
     result = subprocess.run(["git", *args], check=True, text=True, capture_output=True)
     return result.stdout.strip()
@@ -116,7 +123,7 @@ def build_entry(version: str, categorized: dict[str, list[str]]) -> str:
             continue
         lines.append(f"### {section}")
         for item in items:
-            lines.append(f"- {item}")
+            lines.append(f"- {escape_markdown_text(item)}")
         lines.append("")
 
     return "\n".join(lines).rstrip() + "\n\n"
@@ -124,10 +131,11 @@ def build_entry(version: str, categorized: dict[str, list[str]]) -> str:
 
 def build_readme_release_notes(version: str, commits: list[str], categorized: dict[str, list[str]]) -> str:
     latest_commit = commits[0] if commits else "n/a"
+    safe_latest_commit = escape_markdown_text(latest_commit)
     lines = [
         "## Latest Release Notes",
         f"Version: `{version}`",
-        f"Last commit: `{latest_commit}`",
+        f"Last commit: {safe_latest_commit}",
         "",
     ]
 
@@ -137,7 +145,7 @@ def build_readme_release_notes(version: str, commits: list[str], categorized: di
             continue
         lines.append(f"### {section}")
         for item in items[:5]:
-            lines.append(f"- {item}")
+            lines.append(f"- {escape_markdown_text(item)}")
         lines.append("")
 
     lines.append("See full history in CHANGELOG.md.")

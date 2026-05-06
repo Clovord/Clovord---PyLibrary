@@ -69,7 +69,7 @@ class GatewayClient:
             wait_time = min(backoff, 30.0)
             self._logger.info("Reconnecting gateway in %.1fs", wait_time)
             await asyncio.sleep(wait_time)
-            backoff *= 2
+            backoff = min(backoff * 2, 30.0)
 
     async def close(self) -> None:
         self._closing = True
@@ -92,7 +92,6 @@ class GatewayClient:
                 self._ws = ws
                 self._identify_sent = False
                 self._logger.info("Connected to gateway")
-                await self._identify()
 
                 async for msg in ws:
                     if msg.type in {aiohttp.WSMsgType.TEXT, aiohttp.WSMsgType.BINARY}:
@@ -223,7 +222,13 @@ class GatewayClient:
             raise ClovordGatewayDisconnectedError("Cannot send payload: gateway is disconnected")
         await self._ws.send_json(payload)
 
-    async def update_presence(self, status: str = "online", custom_status: str | None = None) -> None:
+    async def update_presence(
+        self,
+        status: str = "online",
+        custom_status: str | None = None,
+        *,
+        _from_ready: bool = False,
+    ) -> None:
         allowed_statuses = {"online", "idle", "dnd", "offline"}
         normalized_status = status.strip().lower()
         if normalized_status not in allowed_statuses:
@@ -242,6 +247,8 @@ class GatewayClient:
                 },
             },
         }
+        if not _from_ready:
+            self._bot._presence_set_explicitly = True
         self._logger.info("Sending presence_update status=%s", normalized_status)
         await self._send(payload)
 
@@ -254,7 +261,8 @@ class GatewayClient:
         if isinstance(event_name, str) and event_name.strip():
             base_message = f"{base_message}: event={event_name}"
 
-        response_json = json.dumps(payload, ensure_ascii=True, separators=(",", ":"))
+        redacted_payload = self._redact_sensitive_payload(payload)
+        response_json = json.dumps(redacted_payload, ensure_ascii=True, separators=(",", ":"))
         full_message = f"{base_message}; details={detail}; gateway_response={response_json}"
 
         if isinstance(data, dict):
@@ -366,3 +374,33 @@ class GatewayClient:
             return True
 
         return bool(data.get("disconnect") or data.get("reconnect"))
+
+    @classmethod
+    def _redact_sensitive_payload(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            redacted: dict[str, Any] = {}
+            for key, item in value.items():
+                if cls._is_sensitive_key(key):
+                    redacted[key] = "[REDACTED]"
+                else:
+                    redacted[key] = cls._redact_sensitive_payload(item)
+            return redacted
+
+        if isinstance(value, list):
+            return [cls._redact_sensitive_payload(item) for item in value]
+
+        return value
+
+    @staticmethod
+    def _is_sensitive_key(key: str) -> bool:
+        normalized = key.strip().lower()
+        return normalized in {
+            "token",
+            "authorization",
+            "identify",
+            "access_token",
+            "refresh_token",
+            "api_key",
+            "secret",
+            "password",
+        }

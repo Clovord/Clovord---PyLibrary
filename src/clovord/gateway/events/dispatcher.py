@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
@@ -10,13 +11,16 @@ if TYPE_CHECKING:
 
 
 _logger = get_logger()
+_EVENT_NAME_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
 
 async def dispatch_gateway_event(bot: Bot, event_name: str, data_full: Any, data_part: Any) -> None:
+    if not _EVENT_NAME_PATTERN.fullmatch(event_name):
+        _logger.warning("Rejected invalid gateway event name: %r", event_name)
+        return
+
     module_name = event_name.lower()
     target = f"clovord.gateway.events.{module_name}"
-
-    
 
     try:
         module = import_module(target)
