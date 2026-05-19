@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.12dev1] - 2026-05-19
+### Added
+- add DOMAINLIST\_ENTRY\_CREATE event handling
+- update version to 0.1.11, enhance event error handling, and improve HTTP client retry logic
+
+### Fixed
+- update version to 0.1.10 and add gateway shutdown event handling
+
+### Docs
+- update for v0.1.10
+- update for v0.1.10dev9
+
 ## [0.1.10] - 2026-05-05
 ### Fixed
 - update version to 0.1.10 and add gateway shutdown event handling
