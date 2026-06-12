@@ -50,14 +50,17 @@ bot.run(os.environ["BOT_TOKEN"])
 
 <!-- latest-release-notes:start -->
 ## Latest Release Notes
-Version: `0.1.12dev3`
-Last commit: fix: update version to 0.1.12dev3 and adjust import paths in event handlers
+Version: `0.1.12dev4`
+Last commit: Merge branch 'main' of https://github.com/Clovord/Library---py---clovord.py
 
-### Fixed
-- update version to 0.1.12dev3 and adjust import paths in event handlers
+### Added
+- update version to 0.1.12dev4 and enhance logger setup
 
 ### Docs
-- update for v0.1.12dev2
+- update for v0.1.12dev3
+
+### Other
+- Merge branch 'main' of https://github.com/Clovord/Library---py---clovord.py
 
 See full history in CHANGELOG.md.
 <!-- latest-release-notes:end -->

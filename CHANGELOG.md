@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.12dev4] - 2026-06-12
+### Added
+- update version to 0.1.12dev4 and enhance logger setup
+
+### Docs
+- update for v0.1.12dev3
+
+### Other
+- Merge branch 'main' of https://github.com/Clovord/Library---py---clovord.py
+
 ## [0.1.12dev3] - 2026-06-12
 ### Fixed
 - update version to 0.1.12dev3 and adjust import paths in event handlers
