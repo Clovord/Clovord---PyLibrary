@@ -50,19 +50,16 @@ bot.run(os.environ["BOT_TOKEN"])
 
 <!-- latest-release-notes:start -->
 ## Latest Release Notes
-Version: `0.1.12dev1`
-Last commit: feat: add DOMAINLIST\_ENTRY\_CREATE event handling
+Version: `0.1.12dev2`
+Last commit: feat: update version to 0.1.12dev2
 
 ### Added
-- add DOMAINLIST\_ENTRY\_CREATE event handling
-- update version to 0.1.11, enhance event error handling, and improve HTTP client retry logic
-
-### Fixed
-- update version to 0.1.10 and add gateway shutdown event handling
+- update version to 0.1.12dev2
+- implement library update event handling with logging
+- add webhook notification for clovord.py release process
 
 ### Docs
-- update for v0.1.10
-- update for v0.1.10dev9
+- update for v0.1.12dev1
 
 See full history in CHANGELOG.md.
 <!-- latest-release-notes:end -->

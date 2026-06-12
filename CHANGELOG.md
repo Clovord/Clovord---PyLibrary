@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.12dev2] - 2026-06-12
+### Added
+- update version to 0.1.12dev2
+- implement library update event handling with logging
+- add webhook notification for clovord.py release process
+
+### Docs
+- update for v0.1.12dev1
+
 ## [0.1.12dev1] - 2026-05-19
 ### Added
 - add DOMAINLIST\_ENTRY\_CREATE event handling
