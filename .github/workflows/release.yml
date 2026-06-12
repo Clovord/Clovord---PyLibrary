@@ -43,3 +43,44 @@ jobs:
           python -m build
       - name: Publish to PyPI (Trusted Publisher)
         uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Notify build webhook for clovord.py release
+        if: always()
+        env:
+          API_BASE_URL: ${{ secrets.ORG_API_BASE_URL }}
+          BUILD_WEBHOOK_TOKEN: ${{ secrets.CLOVORD_BUILD_WEBHOOK_SECRET || secrets.ORG_API_BUILD_WEBHOOK_SECRET }}
+          PACKAGE_VERSION: "${{ github.ref_name }}"
+        run: |
+          set -e
+          BUILD_MESSAGE="$(git log -1 --pretty=%B | tr -d '\r' | sed 's/^\s*//;s/\s*$//')"
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          import urllib.error
+
+          api_base = os.environ["API_BASE_URL"].rstrip("/")
+          url = f"{api_base}/v1/webhooks/builds"
+          token = os.environ["BUILD_WEBHOOK_TOKEN"]
+          payload = {
+              "action": "request",
+              "commit": os.environ["GITHUB_SHA"],
+              "message": os.environ.get("BUILD_MESSAGE", "").strip() or f"Release {os.environ.get('PACKAGE_VERSION', '')}",
+              "target_types": ["library"],
+              "metadata": {"version": os.environ.get("PACKAGE_VERSION", "")},
+          }
+          data = json.dumps(payload).encode("utf-8")
+          req = urllib.request.Request(url, data=data, method="POST")
+          req.add_header("Content-Type", "application/json")
+          req.add_header("X-Clovord-Build-Token", token)
+          try:
+              with urllib.request.urlopen(req, timeout=20) as res:
+                  body = res.read().decode("utf-8")
+                  print("status:", res.status)
+                  print("response:", body)
+          except urllib.error.HTTPError as exc:
+              body = exc.read().decode("utf-8") if exc.fp else ""
+              print("http_error:", exc.code)
+              print("response:", body)
+              raise
+          PY
