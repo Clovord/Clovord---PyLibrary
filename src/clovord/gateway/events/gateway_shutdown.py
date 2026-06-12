@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 
 from ...models.message import Message
-from utils.logger import get_logger
+from ...utils.logger import get_logger
 if TYPE_CHECKING:
     from ...bot import Bot
 
@@ -21,5 +21,5 @@ async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None
         "================================"
     )
     logger.info(log_message)
-    
+
     await bot.events.dispatch(INTERNAL_EVENT_NAME)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 
-from utils.logger import get_logger
+from ...utils.logger import get_logger
 
 
 from ...models.message import Message
