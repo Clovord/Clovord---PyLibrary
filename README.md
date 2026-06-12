@@ -50,16 +50,14 @@ bot.run(os.environ["BOT_TOKEN"])
 
 <!-- latest-release-notes:start -->
 ## Latest Release Notes
-Version: `0.1.12dev2`
-Last commit: feat: update version to 0.1.12dev2
+Version: `0.1.12dev3`
+Last commit: fix: update version to 0.1.12dev3 and adjust import paths in event handlers
 
-### Added
-- update version to 0.1.12dev2
-- implement library update event handling with logging
-- add webhook notification for clovord.py release process
+### Fixed
+- update version to 0.1.12dev3 and adjust import paths in event handlers
 
 ### Docs
-- update for v0.1.12dev1
+- update for v0.1.12dev2
 
 See full history in CHANGELOG.md.
 <!-- latest-release-notes:end -->
