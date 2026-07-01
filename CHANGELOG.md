@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.13dev2] - 2026-07-01
+### Added
+- implement Channel model and enhance message handling with user context
+
 ## [0.1.12dev5] - 2026-07-01
 ### Added
 - add support for extension modules and enhance error handling
