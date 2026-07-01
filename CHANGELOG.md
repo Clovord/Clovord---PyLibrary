@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.13] - 2026-07-01
+### Fixed
+- update version to 0.1.13 in pyproject.toml
+
+### Docs
+- update for v0.1.13dev4
+
 ## [0.1.13dev4] - 2026-07-01
 ### Fixed
 - update version to 0.1.13dev4 in pyproject.toml and enhance message handling in message\_create.py
