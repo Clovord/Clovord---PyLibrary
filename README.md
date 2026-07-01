@@ -34,11 +34,6 @@ bot = Bot(intents=intents)
 async def on_ready():
     print("READY EVENT FIRED")
 
-@bot.event
-async def on_ready_payload(data):
-    print("READY PAYLOAD:")
-    print(json.dumps(data, indent=2, ensure_ascii=False))
-
 bot.run(os.environ["BOT_TOKEN"])
 ```
 
