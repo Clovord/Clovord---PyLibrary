@@ -26,3 +26,8 @@ class ClovordInvalidTokenError(ClovordError):
 class ClovordGatewayDisconnectedError(ClovordError):
     def __init__(self, message: str = "Gateway disconnected") -> None:
         super().__init__("CLOVORD_GATEWAY_DISCONNECTED", message)
+
+
+class ClovordExtensionError(ClovordError):
+    def __init__(self, message: str) -> None:
+        super().__init__("CLOVORD_EXTENSION_ERROR", message)

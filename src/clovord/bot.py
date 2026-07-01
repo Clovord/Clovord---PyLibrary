@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
+import importlib.util
 import inspect
+import pkgutil
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from typing import Any
 
-from .errors import ClovordInvalidTokenError
+from .errors import ClovordExtensionError, ClovordInvalidTokenError
 from .events import EventErrorPolicy, EventManager
 from .gateway.events.dispatcher import dispatch_gateway_event
 from .gateway.handler import GatewayClient
@@ -37,6 +41,7 @@ class Bot:
         self._token: str | None = None
         self._is_running = False
         self._intents = Intents.none()
+        self._loaded_extensions: dict[str, object] = {}
         self.set_intents(Intents.none() if intents is None else intents)
 
     @property
@@ -64,6 +69,68 @@ class Bot:
 
         self.events.register(callback.__name__, callback)
         return callback
+
+    @property
+    def loaded_extensions(self) -> tuple[str, ...]:
+        return tuple(self._loaded_extensions.keys())
+
+    def load_extension(self, module_name: str) -> None:
+        module = importlib.import_module(module_name)
+        setup = getattr(module, "setup", None)
+        if not callable(setup):
+            raise ClovordExtensionError(
+                f"Extension '{module_name}' must expose a callable setup(bot)"
+            )
+
+        setup(self)
+        self._loaded_extensions[module_name] = module
+
+    def load_extensions(self, *module_names: str) -> None:
+        for module_name in module_names:
+            self.load_extension(module_name)
+
+    def load_extensions_from_package(self, package_name: str, *, recursive: bool = True) -> None:
+        package = importlib.import_module(package_name)
+        package_paths = getattr(package, "__path__", None)
+        if package_paths is None:
+            raise ClovordExtensionError(
+                f"'{package_name}' is not a package. Use load_extension() for modules."
+            )
+
+        for module_info in pkgutil.walk_packages(package_paths, f"{package_name}."):
+            if module_info.ispkg and not recursive:
+                continue
+
+            if module_info.ispkg:
+                continue
+
+            self.load_extension(module_info.name)
+
+    def load_extensions_from_path(self, path: str | Path, *, recursive: bool = True) -> None:
+        base_path = Path(path).resolve()
+        if not base_path.exists() or not base_path.is_dir():
+            raise ClovordExtensionError(f"Extension path does not exist: {base_path}")
+
+        pattern = "**/*.py" if recursive else "*.py"
+        for index, file_path in enumerate(sorted(base_path.glob(pattern))):
+            if file_path.name.startswith("__"):
+                continue
+
+            module_name = f"clovord_ext_{index}_{file_path.stem}"
+            spec = importlib.util.spec_from_file_location(module_name, file_path)
+            if spec is None or spec.loader is None:
+                raise ClovordExtensionError(f"Could not load extension spec: {file_path}")
+
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            setup = getattr(module, "setup", None)
+            if not callable(setup):
+                raise ClovordExtensionError(
+                    f"Extension file '{file_path}' must expose a callable setup(bot)"
+                )
+
+            setup(self)
+            self._loaded_extensions[str(file_path)] = module
 
     async def start(self, token: str) -> None:
         token = token.strip()
