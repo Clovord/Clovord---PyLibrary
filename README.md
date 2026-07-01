@@ -87,11 +87,17 @@ bot.load_extensions_from_path(Path(__file__).parent / "handlers")
 
 <!-- latest-release-notes:start -->
 ## Latest Release Notes
-Version: `0.1.13dev2`
-Last commit: fix: update version to 0.1.13dev3 in pyproject.toml
+Version: `0.1.13dev4`
+Last commit: Merge branch 'main' of https://github.com/Clovord/Library---py---clovord.py
 
 ### Fixed
-- update version to 0.1.13dev3 in pyproject.toml
+- update version to 0.1.13dev4 in pyproject.toml and enhance message handling in message\_create.py
+
+### Docs
+- update for v0.1.13dev2
+
+### Other
+- Merge branch 'main' of https://github.com/Clovord/Library---py---clovord.py
 
 See full history in CHANGELOG.md.
 <!-- latest-release-notes:end -->
