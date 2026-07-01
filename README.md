@@ -80,14 +80,18 @@ bot.load_extensions_from_path(Path(__file__).parent / "handlers")
 
 <!-- latest-release-notes:start -->
 ## Latest Release Notes
-Version: `0.1.12dev4`
-Last commit: Merge branch 'main' of https://github.com/Clovord/Library---py---clovord.py
+Version: `0.1.12dev5`
+Last commit: fix: remove unused on\_ready\_payload event handler from README
 
 ### Added
-- update version to 0.1.12dev4 and enhance logger setup
+- add support for extension modules and enhance error handling
+
+### Fixed
+- remove unused on\_ready\_payload event handler from README
+- revert version to 0.1.12 from 0.1.12dev4
 
 ### Docs
-- update for v0.1.12dev3
+- update for v0.1.12dev4
 
 ### Other
 - Merge branch 'main' of https://github.com/Clovord/Library---py---clovord.py
