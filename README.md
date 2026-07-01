@@ -51,9 +51,16 @@ bot.run(os.environ["BOT_TOKEN"])
 # handlers/message_create.py
 def setup(bot):
     @bot.event
-    async def on_message(message):
+    async def on_message_create(message):
+        if bot.user and message.author.id == bot.user.id:
+            return
+
         if message.content.startswith("!"):
-            await message.channel.send("Hello from extension")
+            await message.channel.send(
+                "Hello from extension",
+                embeds=[{"title": "Welcome", "description": "Embed support"}],
+                container={"type": "card", "accent": "brand"},
+            )
 ```
 
 ```python

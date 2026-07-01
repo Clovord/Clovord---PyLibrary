@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from ...models.user import User
+
 if TYPE_CHECKING:
     from ...bot import Bot
 
@@ -9,7 +11,12 @@ GATEWAY_EVENT_NAME = "READY"
 INTERNAL_EVENT_NAME = "on_ready"
 
 async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None = None) -> None:
-    username, user_id = _extract_ready_identity(data_part)
+    user = _extract_ready_user(data_part)
+    if user is not None:
+        bot._user = user
+
+    username = bot.user.username if bot.user is not None else "unknown"
+    user_id = bot.user.id if bot.user is not None else "unknown"
     bot._logger.info("Connected to gateway as %s (%s)", username, user_id)
 
     if bot._auto_online_presence and not bot._presence_set_explicitly:
@@ -21,9 +28,9 @@ async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None
     await bot.events.dispatch(INTERNAL_EVENT_NAME)
 
 
-def _extract_ready_identity(data: Any) -> tuple[str, str]:
+def _extract_ready_user(data: Any) -> User | None:
     if not isinstance(data, dict):
-        return "unknown", "unknown"
+        return None
 
     candidates: list[dict[str, Any]] = []
     for key in ("user", "me", "bot", "client"):
@@ -35,13 +42,13 @@ def _extract_ready_identity(data: Any) -> tuple[str, str]:
     candidates.append(data)
 
     for item in candidates:
-        user_id = item.get("id")
-        username = item.get("username") or item.get("name") or item.get("display_name")
-        if user_id is None and username is None:
+        if item.get("id") is None and item.get("username") is None and item.get("name") is None and item.get("display_name") is None:
             continue
 
-        normalized_username = str(username) if username is not None else "unknown"
-        normalized_user_id = str(user_id) if user_id is not None else "unknown"
-        return normalized_username, normalized_user_id
+        payload = {
+            "id": item.get("id", "unknown"),
+            "username": item.get("username") or item.get("name") or item.get("display_name") or "unknown",
+        }
+        return User.from_dict(payload)
 
-    return "unknown", "unknown"
+    return None

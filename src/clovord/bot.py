@@ -11,6 +11,7 @@ from typing import Any
 
 from .errors import ClovordExtensionError, ClovordInvalidTokenError
 from .events import EventErrorPolicy, EventManager
+from .models.user import User
 from .gateway.events.dispatcher import dispatch_gateway_event
 from .gateway.handler import GatewayClient
 from .http import HTTPClient
@@ -42,6 +43,7 @@ class Bot:
         self._is_running = False
         self._intents = Intents.none()
         self._loaded_extensions: dict[str, object] = {}
+        self._user: User | None = None
         self.set_intents(Intents.none() if intents is None else intents)
 
     @property
@@ -73,6 +75,16 @@ class Bot:
     @property
     def loaded_extensions(self) -> tuple[str, ...]:
         return tuple(self._loaded_extensions.keys())
+
+    @property
+    def user(self) -> User | None:
+        return self._user
+
+    @property
+    def user_id(self) -> str | None:
+        if self._user is None:
+            return None
+        return self._user.id
 
     def load_extension(self, module_name: str) -> None:
         module = importlib.import_module(module_name)
