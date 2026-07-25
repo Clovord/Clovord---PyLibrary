@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from typing import Any
+import inspect
+from typing import Any, Awaitable, Callable
+
+
+CommandCallback = Callable[..., Awaitable[Any]]
 
 
 def _unwrap_payload(response: dict[str, Any] | list[Any] | None) -> Any:
@@ -12,12 +16,67 @@ def _unwrap_payload(response: dict[str, Any] | list[Any] | None) -> Any:
     return response
 
 
+class Interaction:
+    """Lightweight interaction wrapper for slash-command handlers."""
+
+    def __init__(self, bot: Any, payload: dict[str, Any]) -> None:
+        self._bot = bot
+        self.raw = payload
+        self.id = str(payload.get("id") or "")
+        self.token = str(payload.get("token") or "")
+        self.type = int(payload.get("type") or 0)
+        self.application_id = str(payload.get("application_id") or "")
+        self.guild_id = payload.get("guild_id")
+        self.channel_id = payload.get("channel_id")
+        self.data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+        self.user = payload.get("user") if isinstance(payload.get("user"), dict) else {}
+        self.member = payload.get("member") if isinstance(payload.get("member"), dict) else None
+        self.command_name = str(self.data.get("name") or "")
+        self._responded = False
+
+    async def response_send_message(
+        self,
+        content: str = "",
+        *,
+        components: list[Any] | None = None,
+        ephemeral: bool = False,
+    ) -> Any:
+        """Respond to this interaction with a channel message (callback type 4)."""
+        if self._responded:
+            raise RuntimeError("Interaction already responded")
+        if not self.id or not self.token:
+            raise RuntimeError("Interaction is missing id/token")
+
+        flags = 64 if ephemeral else 0
+        body: dict[str, Any] = {
+            "type": 4,
+            "data": {
+                "content": str(content or ""),
+                "flags": flags,
+            },
+        }
+        if components is not None:
+            body["data"]["components"] = components
+
+        response = await self._bot.http.post(
+            f"/interactions/{self.id}/{self.token}/callback",
+            json=body,
+        )
+        self._responded = True
+        return _unwrap_payload(response)
+
+    # Discord.py-style alias
+    async def send(self, content: str = "", **kwargs: Any) -> Any:
+        return await self.response_send_message(content, **kwargs)
+
+
 class CommandTree:
     """Register and sync application slash commands for the connected bot."""
 
     def __init__(self, bot: Any) -> None:
         self._bot = bot
         self._pending: list[dict[str, Any]] = []
+        self._handlers: dict[str, CommandCallback] = {}
 
     def command(
         self,
@@ -31,9 +90,11 @@ class CommandTree:
         visibility: dict[str, Any] | None = None,
         guild_id: str | None = None,
     ):
-        """Decorator that queues a chat-input command for later sync."""
+        """Decorator that queues a chat-input command and binds its handler."""
 
-        def decorator(func):
+        def decorator(func: CommandCallback):
+            if not inspect.iscoroutinefunction(func):
+                raise TypeError("Slash command handler must be an async function")
             self.add_command(
                 name=name,
                 description=description,
@@ -43,6 +104,7 @@ class CommandTree:
                 dm_permission=dm_permission,
                 visibility=visibility,
                 guild_id=guild_id,
+                callback=func,
             )
             return func
 
@@ -59,6 +121,7 @@ class CommandTree:
         dm_permission: bool = True,
         visibility: dict[str, Any] | None = None,
         guild_id: str | None = None,
+        callback: CommandCallback | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "type": int(type),
@@ -73,7 +136,24 @@ class CommandTree:
         if guild_id is not None:
             payload["_guild_id"] = str(guild_id)
         self._pending.append(payload)
+        if callback is not None:
+            self._handlers[str(name).lower()] = callback
         return payload
+
+    async def dispatch(self, payload: dict[str, Any]) -> bool:
+        """Route an INTERACTION_CREATE payload to a registered command handler."""
+        if not isinstance(payload, dict):
+            return False
+        if int(payload.get("type") or 0) != 2:
+            return False
+        data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+        name = str(data.get("name") or "").strip().lower()
+        handler = self._handlers.get(name)
+        if handler is None:
+            return False
+        interaction = Interaction(self._bot, payload)
+        await handler(interaction)
+        return True
 
     async def upsert(
         self,
@@ -185,6 +265,7 @@ class CommandTree:
 
     def clear(self) -> None:
         self._pending.clear()
+        self._handlers.clear()
 
     def _resolve_application_id(self, application_id: str | None) -> str:
         if application_id:
