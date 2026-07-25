@@ -11,6 +11,7 @@ from typing import Any
 
 from .errors import ClovordExtensionError, ClovordInvalidTokenError
 from .events import EventErrorPolicy, EventManager
+from .commands import CommandTree
 from .models.user import User
 from .gateway.events.dispatcher import dispatch_gateway_event
 from .gateway.handler import GatewayClient
@@ -35,6 +36,7 @@ class Bot:
         self.events = EventManager(error_policy=event_error_policy)
         self.http = HTTPClient()
         self.gateway = GatewayClient(self)
+        self.tree = CommandTree(self)
         self._logger = get_logger()
         self._run_task: asyncio.Task[None] | None = None
         self._auto_online_presence = auto_online_presence

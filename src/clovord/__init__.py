@@ -3,10 +3,11 @@
 from importlib.metadata import PackageNotFoundError, version
 
 from .bot import Bot
+from .commands import CommandTree
 from .errors import ClovordError, ClovordExtensionError
 from .intents import Intents
 
-__all__ = ["Bot", "ClovordError", "ClovordExtensionError", "Intents"]
+__all__ = ["Bot", "CommandTree", "ClovordError", "ClovordExtensionError", "Intents"]
 
 try:
     __version__ = version("clovord.py")

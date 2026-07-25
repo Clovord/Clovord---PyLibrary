@@ -47,6 +47,15 @@ class HTTPClient:
     async def post(self, path: str, **kwargs: Any) -> dict[str, Any]:
         return await self._request("POST", path, **kwargs)
 
+    async def put(self, path: str, **kwargs: Any) -> dict[str, Any]:
+        return await self._request("PUT", path, **kwargs)
+
+    async def patch(self, path: str, **kwargs: Any) -> dict[str, Any]:
+        return await self._request("PATCH", path, **kwargs)
+
+    async def delete(self, path: str, **kwargs: Any) -> dict[str, Any]:
+        return await self._request("DELETE", path, **kwargs)
+
     async def _request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
         if self._session is None or self._session.closed:
             raise ClovordHTTPError("HTTP client is not started")
@@ -71,11 +80,14 @@ class HTTPClient:
                         text = await response.text()
                         raise ClovordHTTPError(f"{response.status} {response.reason}: {text}")
 
+                    if response.status == 204:
+                        return {}
+
                     if response.content_type == "application/json":
                         return await response.json()
 
                     text = await response.text()
-                    return {"raw": text}
+                    return {"raw": text} if text else {}
 
             raise ClovordHTTPError("429 Too Many Requests: retry limit reached")
         except aiohttp.ClientError as exc:

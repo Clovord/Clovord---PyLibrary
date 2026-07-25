@@ -14,6 +14,7 @@ class Channel:
         content: str = "",
         *,
         embeds: list[dict[str, Any]] | None = None,
+        components: list[dict[str, Any]] | None = None,
         container: dict[str, Any] | None = None,
         attachments: list[dict[str, Any]] | None = None,
         reply_to: str | None = None,
@@ -22,8 +23,11 @@ class Channel:
         payload: dict[str, Any] = {"content": content}
         if embeds is not None:
             payload["embeds"] = embeds
-        if container is not None:
-            payload["container"] = container
+        if components is not None:
+            payload["components"] = components
+        elif container is not None:
+            # Legacy alias: single container becomes a top-level components list
+            payload["components"] = [container]
         if attachments is not None:
             payload["attachments"] = attachments
         if reply_to is not None:
