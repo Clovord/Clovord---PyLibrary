@@ -3,8 +3,14 @@ from __future__ import annotations
 import inspect
 from typing import Any, Awaitable, Callable
 
+from .ui.components import has_layout_components, serialize_components
+
 
 CommandCallback = Callable[..., Awaitable[Any]]
+
+# Message flags
+EPHEMERAL = 1 << 6  # 64
+IS_COMPONENTS_V2 = 1 << 15  # 32768
 
 
 def _unwrap_payload(response: dict[str, Any] | list[Any] | None) -> Any:
@@ -14,6 +20,76 @@ def _unwrap_payload(response: dict[str, Any] | list[Any] | None) -> Any:
         if key in response:
             return response[key]
     return response
+
+
+class InteractionResponse:
+    """Discord.py-style first response helper (`interaction.response`)."""
+
+    def __init__(self, interaction: Interaction) -> None:
+        self._interaction = interaction
+
+    @property
+    def is_done(self) -> bool:
+        return self._interaction._responded
+
+    async def send_message(
+        self,
+        content: str | None = None,
+        *,
+        components: list[Any] | None = None,
+        ephemeral: bool = False,
+        flags: int | None = None,
+    ) -> Any:
+        """Respond with a channel message (interaction callback type 4)."""
+        interaction = self._interaction
+        if interaction._responded:
+            raise RuntimeError("Interaction has already been responded to")
+        if not interaction.id or not interaction.token:
+            raise RuntimeError("Interaction is missing id/token")
+
+        serialized = serialize_components(components) if components is not None else None
+        text = "" if content is None else str(content)
+        if not text and not serialized:
+            raise ValueError("send_message requires content and/or components")
+
+        resolved_flags = 0 if flags is None else int(flags)
+        if ephemeral:
+            resolved_flags |= EPHEMERAL
+        if serialized and has_layout_components(serialized):
+            resolved_flags |= IS_COMPONENTS_V2
+
+        data: dict[str, Any] = {"flags": resolved_flags}
+        if text:
+            data["content"] = text
+        if serialized is not None:
+            data["components"] = serialized
+
+        response = await interaction._bot.http.post(
+            f"/interactions/{interaction.id}/{interaction.token}/callback",
+            json={"type": 4, "data": data},
+        )
+        interaction._responded = True
+        return _unwrap_payload(response)
+
+    async def defer(self, *, ephemeral: bool = False) -> Any:
+        """Acknowledge with a deferred channel message (type 5)."""
+        interaction = self._interaction
+        if interaction._responded:
+            raise RuntimeError("Interaction has already been responded to")
+        if not interaction.id or not interaction.token:
+            raise RuntimeError("Interaction is missing id/token")
+
+        data: dict[str, Any] | None = {"flags": EPHEMERAL} if ephemeral else None
+        body: dict[str, Any] = {"type": 5}
+        if data is not None:
+            body["data"] = data
+
+        response = await interaction._bot.http.post(
+            f"/interactions/{interaction.id}/{interaction.token}/callback",
+            json=body,
+        )
+        interaction._responded = True
+        return _unwrap_payload(response)
 
 
 class Interaction:
@@ -33,41 +109,15 @@ class Interaction:
         self.member = payload.get("member") if isinstance(payload.get("member"), dict) else None
         self.command_name = str(self.data.get("name") or "")
         self._responded = False
+        self.response = InteractionResponse(self)
 
-    async def response_send_message(
-        self,
-        content: str = "",
-        *,
-        components: list[Any] | None = None,
-        ephemeral: bool = False,
-    ) -> Any:
-        """Respond to this interaction with a channel message (callback type 4)."""
-        if self._responded:
-            raise RuntimeError("Interaction already responded")
-        if not self.id or not self.token:
-            raise RuntimeError("Interaction is missing id/token")
+    async def response_send_message(self, content: str = "", **kwargs: Any) -> Any:
+        """Deprecated alias — prefer ``interaction.response.send_message``."""
+        return await self.response.send_message(content, **kwargs)
 
-        flags = 64 if ephemeral else 0
-        body: dict[str, Any] = {
-            "type": 4,
-            "data": {
-                "content": str(content or ""),
-                "flags": flags,
-            },
-        }
-        if components is not None:
-            body["data"]["components"] = components
-
-        response = await self._bot.http.post(
-            f"/interactions/{self.id}/{self.token}/callback",
-            json=body,
-        )
-        self._responded = True
-        return _unwrap_payload(response)
-
-    # Discord.py-style alias
     async def send(self, content: str = "", **kwargs: Any) -> Any:
-        return await self.response_send_message(content, **kwargs)
+        """Deprecated alias — prefer ``interaction.response.send_message``."""
+        return await self.response.send_message(content, **kwargs)
 
 
 class CommandTree:
