@@ -88,6 +88,15 @@ class Bot:
             return None
         return self._user.id
 
+    @property
+    def latency(self) -> float:
+        """Gateway heartbeat round-trip latency in seconds.
+
+        Returns ``float('nan')`` until the first HEARTBEAT_ACK is received.
+        Typical usage: ``round(bot.latency * 1000)`` for milliseconds.
+        """
+        return self.gateway.latency
+
     def load_extension(self, module_name: str) -> None:
         module = importlib.import_module(module_name)
         setup = getattr(module, "setup", None)

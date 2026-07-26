@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import time
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
@@ -43,6 +44,13 @@ class GatewayClient:
         self._token: str | None = None
         self._closing = False
         self._identify_sent = False
+        self._last_heartbeat: float | None = None
+        self._latency: float = float("nan")
+
+    @property
+    def latency(self) -> float:
+        """Seconds between the last HEARTBEAT and its ACK. ``nan`` until measured."""
+        return self._latency
 
     async def connect(self, token: str) -> None:
         self._token = token
@@ -91,6 +99,8 @@ class GatewayClient:
             async with self._session.ws_connect(self.GATEWAY_URL, heartbeat=None, autoping=True) as ws:
                 self._ws = ws
                 self._identify_sent = False
+                self._last_heartbeat = None
+                self._latency = float("nan")
                 self._logger.info("Connected to gateway")
 
                 async for msg in ws:
@@ -147,6 +157,7 @@ class GatewayClient:
             return
 
         if op in {GATEWAY_OP_HEARTBEAT_ACK, GATEWAY_OP_PONG}:
+            self._ack_heartbeat()
             return
 
         if op == GATEWAY_OP_DISPATCH and isinstance(event_name, str):
@@ -211,11 +222,18 @@ class GatewayClient:
 
     async def _heartbeat_loop(self) -> None:
         while not self._closing:
-            await asyncio.sleep(self._heartbeat_interval)
             await self._send_heartbeat()
+            await asyncio.sleep(self._heartbeat_interval)
 
     async def _send_heartbeat(self) -> None:
+        self._last_heartbeat = time.perf_counter()
         await self._send({"op": 1, "d": self._seq})
+
+    def _ack_heartbeat(self) -> None:
+        if self._last_heartbeat is None:
+            return
+        self._latency = time.perf_counter() - self._last_heartbeat
+        self._last_heartbeat = None
 
     async def _send(self, payload: dict[str, Any]) -> None:
         if self._ws is None or self._ws.closed:

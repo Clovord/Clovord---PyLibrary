@@ -42,6 +42,30 @@ def test_presence_update_state_builds_backward_compatible_payload() -> None:
 
 
 @pytest.mark.asyncio
+async def test_gateway_send_heartbeat_records_timestamp_and_ack_sets_latency() -> None:
+    import math
+
+    bot = _DummyBot()
+    gateway = GatewayClient(bot)
+    sent: list[dict[str, object]] = []
+
+    async def _fake_send(payload: dict[str, object]) -> None:
+        sent.append(payload)
+
+    gateway._send = _fake_send  # type: ignore[method-assign]
+
+    assert math.isnan(gateway.latency)
+    await gateway._send_heartbeat()
+    assert gateway._last_heartbeat is not None
+    assert sent and sent[0]["op"] == 1
+
+    gateway._ack_heartbeat()
+    assert gateway._last_heartbeat is None
+    assert gateway.latency >= 0.0
+    assert not math.isnan(gateway.latency)
+
+
+@pytest.mark.asyncio
 async def test_gateway_update_presence_normalizes_status_and_marks_explicit() -> None:
     bot = _DummyBot()
     gateway = GatewayClient(bot)
