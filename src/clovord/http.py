@@ -13,7 +13,7 @@ from .errors import ClovordHTTPError, ClovordInvalidTokenError
 class HTTPClient:
     """Minimal async REST client for Clovord API."""
 
-    BASE_URL = "https://clovord.com/api/v1"
+    BASE_URL = "https://clovord.com/api/v2"
     MAX_RETRY_AFTER_SECONDS = 30.0
     DEFAULT_RETRY_AFTER_SECONDS = 1.0
 

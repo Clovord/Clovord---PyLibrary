@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.17] - 2026-08-17
+### Changed
+- Default REST base URL is now `https://clovord.com/api/v2`.
+
 ## [0.1.13] - 2026-07-01
 ### Fixed
 - update version to 0.1.13 in pyproject.toml
