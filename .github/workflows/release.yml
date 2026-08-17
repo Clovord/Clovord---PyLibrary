@@ -60,7 +60,7 @@ jobs:
           import urllib.error
 
           api_base = os.environ["API_BASE_URL"].rstrip("/")
-          url = f"{api_base}/v2/webhooks/builds"
+          url = f"{api_base}/v1/webhooks/builds"
           token = os.environ["BUILD_WEBHOOK_TOKEN"]
           payload = {
               "action": "request",
