@@ -161,8 +161,11 @@ class GatewayClient:
             return
 
         if op == GATEWAY_OP_DISPATCH and isinstance(event_name, str):
-            if "ERROR" in event_name or self._looks_like_gateway_error_payload(data_part):
-                raise self._build_gateway_error_from_payload(payload)
+            if self._is_gateway_error_event(event_name):
+                await self._bot._handle_gateway_event(event_name, data_full, data_part)
+                if self._should_disconnect_for_gateway_error(data_part):
+                    raise self._build_gateway_error_from_payload(payload)
+                return
 
             await self._bot._handle_gateway_event(event_name, data_full, data_part)
             return
@@ -275,7 +278,9 @@ class GatewayClient:
         data = payload.get("d")
         detail = self._format_gateway_error_detail(payload)
 
-        base_message = "Gateway requested reconnect" if payload.get("op") == 7 else "Gateway reported an error"
+        base_message = "Gateway reported an error"
+        if self._should_disconnect_for_gateway_error(data if isinstance(data, dict) else {}):
+            base_message = "Gateway requested disconnect"
         if isinstance(event_name, str) and event_name.strip():
             base_message = f"{base_message}: event={event_name}"
 
@@ -374,24 +379,22 @@ class GatewayClient:
         return ", ".join(parts)
 
     @staticmethod
-    def _looks_like_gateway_error_payload(data: Any) -> bool:
+    def _is_gateway_error_event(event_name: str) -> bool:
+        return event_name in {"GATEWAY_ERROR", "ERROR"}
+
+    @classmethod
+    def _should_disconnect_for_gateway_error(cls, data: Any) -> bool:
         if not isinstance(data, dict):
             return False
-
-        status = data.get("status")
-        request = data.get("request")
-        errors = data.get("errors")
-        if isinstance(status, dict) and "code" in status:
-            return True
-        if isinstance(request, dict) and "event" in request:
-            return True
-        if isinstance(errors, dict) and any(key in errors for key in ("custom_message", "message", "error")):
+        if data.get("disconnect") is True:
             return True
 
-        if "code" in data and any(key in data for key in ("message", "error", "reason", "event")):
-            return True
+        for key in ("errors", "options", "status"):
+            nested = data.get(key)
+            if isinstance(nested, dict) and nested.get("disconnect") is True:
+                return True
 
-        return bool(data.get("disconnect") or data.get("reconnect"))
+        return False
 
     @classmethod
     def _redact_sensitive_payload(cls, value: Any) -> Any:

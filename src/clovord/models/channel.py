@@ -18,6 +18,8 @@ class Channel:
         container: dict[str, Any] | None = None,
         attachments: list[dict[str, Any]] | None = None,
         reply_to: str | None = None,
+        message_reference: dict[str, Any] | None = None,
+        allowed_mentions: dict[str, Any] | None = None,
         **extra: Any,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {"content": content}
@@ -30,8 +32,13 @@ class Channel:
             payload["components"] = [container]
         if attachments is not None:
             payload["attachments"] = attachments
-        if reply_to is not None:
-            payload["reply_to"] = reply_to
+        if message_reference is not None:
+            payload["message_reference"] = message_reference
+        elif reply_to is not None:
+            # Legacy alias → Discord message_reference
+            payload["message_reference"] = {"message_id": str(reply_to)}
+        if allowed_mentions is not None:
+            payload["allowed_mentions"] = allowed_mentions
         if extra:
             payload.update(extra)
 

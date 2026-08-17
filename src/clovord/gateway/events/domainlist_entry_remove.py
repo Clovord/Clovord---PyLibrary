@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from ...bot import Bot
 
-GATEWAY_EVENT_NAME = "DOMAINLIST_ENTRY_CREATE"
-INTERNAL_EVENT_NAME = "on_domainlist_entry_create"
+GATEWAY_EVENT_NAME = "DOMAINLIST_ENTRY_REMOVE"
+INTERNAL_EVENT_NAME = "on_domainlist_entry_remove"
 
 
 def _extract_entry(data_part: dict | None) -> Any:

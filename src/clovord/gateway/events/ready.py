@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 GATEWAY_EVENT_NAME = "READY"
 INTERNAL_EVENT_NAME = "on_ready"
 
+
 async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None = None) -> None:
     user = _extract_ready_user(data_part)
     if user is not None:
@@ -18,6 +19,7 @@ async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None
     username = bot.user.username if bot.user is not None else "unknown"
     user_id = bot.user.id if bot.user is not None else "unknown"
     bot._logger.info("Connected to gateway as %s (%s)", username, user_id)
+    _log_ready_intents(bot, data_part)
 
     if bot._auto_online_presence and not bot._presence_set_explicitly:
         try:
@@ -26,6 +28,68 @@ async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None
             bot._logger.warning("Failed to set online presence: %s", exc)
 
     await bot.events.dispatch(INTERNAL_EVENT_NAME)
+
+
+def _log_ready_intents(bot: Bot, data: Any) -> None:
+    intents = data.get("intents") if isinstance(data, dict) else None
+    if not isinstance(intents, dict):
+        return
+
+    requested = _normalize_intent_names(intents.get("requested"))
+    granted = _normalize_granted_intents(intents.get("granted"))
+    denied = _normalize_intent_names(intents.get("denied"))
+    invalid = _normalize_intent_names(intents.get("invalid"))
+
+    if granted:
+        granted_text = ", ".join(
+            f"{name} ({level})" if level else name for name, level in granted
+        )
+        bot._logger.info("Granted gateway intents: %s", granted_text)
+
+    for intent_name in denied:
+        bot._logger.error(
+            "Intent not permitted: %s. This application is not allowed to use that intent, "
+            "so events that require it will not be received.",
+            intent_name,
+        )
+
+    for intent_name in invalid:
+        bot._logger.warning(
+            "Unknown intent requested and ignored by the gateway: %s",
+            intent_name,
+        )
+
+    if requested and not granted and not denied and not invalid:
+        bot._logger.info("Requested gateway intents: %s", ", ".join(requested))
+
+
+def _normalize_intent_names(value: Any) -> list[str]:
+    if isinstance(value, dict):
+        return [str(key) for key in value if str(key).strip()]
+    if isinstance(value, list):
+        names: list[str] = []
+        for item in value:
+            text = str(item).strip()
+            if text:
+                names.append(text)
+        return names
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    return []
+
+
+def _normalize_granted_intents(value: Any) -> list[tuple[str, str | None]]:
+    if isinstance(value, dict):
+        granted: list[tuple[str, str | None]] = []
+        for key, level in value.items():
+            name = str(key).strip()
+            if not name:
+                continue
+            level_text = str(level).strip() if level is not None else ""
+            granted.append((name, level_text or None))
+        return granted
+
+    return [(name, None) for name in _normalize_intent_names(value)]
 
 
 def _extract_ready_user(data: Any) -> User | None:

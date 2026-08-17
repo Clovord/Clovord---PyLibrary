@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from clovord.errors import ClovordError
 from clovord.gateway.events.presence_update import _build_presence_states
 from clovord.gateway.handler import GatewayClient
 from clovord.http import HTTPClient
@@ -104,6 +105,135 @@ def test_gateway_error_payload_is_redacted_in_exception_message() -> None:
     assert err.code == "CLOVORD_GATEWAY_4001"
     assert "super-secret" not in message
     assert "[REDACTED]" in message
+
+
+@pytest.mark.asyncio
+async def test_gateway_error_event_is_dispatched_without_reconnect() -> None:
+    handled: list[str] = []
+
+    class _EventBot(_DummyBot):
+        async def _handle_gateway_event(self, event_name: str, data_full: object, data_part: object) -> None:
+            handled.append(event_name)
+
+    gateway = GatewayClient(_EventBot())
+    await gateway._handle_payload(
+        {
+            "op": 7,
+            "t": "GATEWAY_ERROR",
+            "d": {
+                "status": {"code": 423019, "code_message": "You need the DOMAINLIST_INTENT"},
+                "request": {"event": "IDENTIFY"},
+                "errors": {"custom_message": "intent not permitted"},
+            },
+        }
+    )
+
+    assert handled == ["GATEWAY_ERROR"]
+
+
+@pytest.mark.asyncio
+async def test_gateway_error_with_disconnect_is_dispatched_then_raised() -> None:
+    handled: list[str] = []
+
+    class _EventBot(_DummyBot):
+        async def _handle_gateway_event(self, event_name: str, data_full: object, data_part: object) -> None:
+            handled.append(event_name)
+
+    gateway = GatewayClient(_EventBot())
+    with pytest.raises(ClovordError, match="Gateway requested disconnect"):
+        await gateway._handle_payload(
+            {
+                "op": 7,
+                "t": "GATEWAY_ERROR",
+                "d": {
+                    "status": {"code": 401006, "code_message": "Identify timeout"},
+                    "request": {"event": "GATEWAY_IDENTIFY"},
+                    "disconnect": True,
+                },
+            }
+        )
+
+    assert handled == ["GATEWAY_ERROR"]
+
+
+@pytest.mark.asyncio
+async def test_domainlist_dispatch_is_not_treated_as_gateway_error() -> None:
+    handled: list[tuple[str, object]] = []
+
+    class _EventBot(_DummyBot):
+        async def _handle_gateway_event(self, event_name: str, data_full: object, data_part: object) -> None:
+            handled.append((event_name, data_part))
+
+    gateway = GatewayClient(_EventBot())
+    entry = {"id": "1", "domain": "example.com"}
+    await gateway._handle_payload(
+        {
+            "op": 7,
+            "t": "DOMAINLIST_ENTRY_CREATE",
+            "d": {"entry": entry},
+        }
+    )
+
+    assert handled == [("DOMAINLIST_ENTRY_CREATE", {"entry": entry})]
+
+
+@pytest.mark.asyncio
+async def test_ready_logs_denied_intents(caplog: pytest.LogCaptureFixture) -> None:
+    from clovord.events import EventManager
+    from clovord.gateway.events.ready import handle as handle_ready
+    from clovord.utils.logger import get_logger
+
+    class _ReadyBot(_DummyBot):
+        def __init__(self) -> None:
+            super().__init__()
+            self.events = EventManager()
+            self._logger = get_logger()
+            self._auto_online_presence = False
+            self._user = None
+
+        @property
+        def user(self):
+            return self._user
+
+    bot = _ReadyBot()
+    with caplog.at_level("ERROR"):
+        await handle_ready(
+            bot,
+            None,
+            {
+                "user": {"id": "1", "username": "testbot"},
+                "intents": {
+                    "requested": ["INTENT_DOMAINLIST", "INTENT_PRESENCE"],
+                    "granted": {"INTENT_PRESENCE": "full"},
+                    "denied": ["INTENT_DOMAINLIST"],
+                    "invalid": [],
+                },
+            },
+        )
+
+    assert any("Intent not permitted: INTENT_DOMAINLIST" in record.message for record in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_domainlist_entry_create_unwraps_entry() -> None:
+    from clovord.events import EventManager
+    from clovord.gateway.events.domainlist_entry_create import handle as handle_create
+
+    received: list[object] = []
+
+    class _EventBot(_DummyBot):
+        def __init__(self) -> None:
+            super().__init__()
+            self.events = EventManager()
+
+            async def on_domainlist_entry_create(entry: object) -> None:
+                received.append(entry)
+
+            self.events.register("on_domainlist_entry_create", on_domainlist_entry_create)
+
+    entry = {"id": "1", "domain": "example.com"}
+    await handle_create(_EventBot(), None, {"entry": entry})
+    assert received == [entry]
 
 
 def test_http_retry_after_parsing_uses_bounds_and_defaults() -> None:
