@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 import asyncio
@@ -202,6 +203,17 @@ class Bot:
         await self.gateway.close()
         await self.http.close()
         self._is_running = False
+
+    async def __aenter__(self) -> Bot:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: Any | None,
+    ) -> None:
+        await self.close()
 
     async def _handle_gateway_event(self, event_name: str, data_full: Any, data_part: Any) -> None:
         await dispatch_gateway_event(self, event_name, data_full, data_part)
