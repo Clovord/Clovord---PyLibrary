@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from ...models.user import User
+from ...utils.library_update_check import check_and_notify_library_update
 
 if TYPE_CHECKING:
     from ...bot import Bot
@@ -27,6 +28,7 @@ async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None
         except Exception as exc:
             bot._logger.warning("Failed to set online presence: %s", exc)
 
+    await check_and_notify_library_update(bot)
     await bot.events.dispatch(INTERNAL_EVENT_NAME)
 
 

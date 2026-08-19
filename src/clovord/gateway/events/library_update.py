@@ -19,6 +19,7 @@ logger = get_logger("LibraryUpdater")
 async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None = None) -> None:
     library = data_part.get("library") if data_part else "Python"
     version = data_part.get("version") if data_part else "unknown"
+    current_version = data_part.get("current_version") if data_part else None
     download_url = data_part.get("download_url") if data_part else None
     commit = data_part.get("commit") if data_part else None
     message = data_part.get("message") if data_part else None
@@ -27,6 +28,10 @@ async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None
         "=== LIBRARY UPDATE AVAILABLE ===\n"
         f"Library: {library}\n"
         f"Version: {version}\n"
+    )
+    if current_version:
+        log_message += f"Current Version: {current_version}\n"
+    log_message += (
         f"Commit: {commit or 'N/A'}\n"
         f"Message: {message or 'No release message provided.'}\n"
         f"Download URL: {download_url or 'N/A'}\n"

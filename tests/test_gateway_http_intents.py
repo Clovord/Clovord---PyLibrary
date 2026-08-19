@@ -157,6 +157,37 @@ async def test_gateway_error_with_disconnect_is_dispatched_then_raised() -> None
 
 
 @pytest.mark.asyncio
+async def test_gateway_error_with_reconnect_false_forbids_reconnect() -> None:
+    class _EventBot(_DummyBot):
+        async def _handle_gateway_event(self, event_name: str, data_full: object, data_part: object) -> None:
+            return None
+
+    gateway = GatewayClient(_EventBot())
+    with pytest.raises(ClovordError, match="Gateway requested disconnect"):
+        await gateway._handle_payload(
+            {
+                "op": 7,
+                "t": "GATEWAY_ERROR",
+                "d": {
+                    "status": {"code": 423006, "code_message": "Account disabled"},
+                    "request": {"event": "GATEWAY_IDENTIFY"},
+                    "disconnect": True,
+                    "reconnect": False,
+                },
+            }
+        )
+
+    assert gateway._reconnect_forbidden is True
+
+
+def test_no_reconnect_close_code_detection() -> None:
+    assert GatewayClient._is_no_reconnect_close_code(4100) is True
+    assert GatewayClient._is_no_reconnect_close_code(4199) is True
+    assert GatewayClient._is_no_reconnect_close_code(4000) is False
+    assert GatewayClient._is_no_reconnect_close_code(4230) is False
+
+
+@pytest.mark.asyncio
 async def test_domainlist_dispatch_is_not_treated_as_gateway_error() -> None:
     handled: list[tuple[str, object]] = []
 

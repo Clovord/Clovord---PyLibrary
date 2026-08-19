@@ -43,6 +43,7 @@ class GatewayClient:
         self._heartbeat_interval: float = 30.0
         self._token: str | None = None
         self._closing = False
+        self._reconnect_forbidden = False
         self._identify_sent = False
         self._last_heartbeat: float | None = None
         self._latency: float = float("nan")
@@ -54,6 +55,7 @@ class GatewayClient:
 
     async def connect(self, token: str) -> None:
         self._token = token
+        self._reconnect_forbidden = False
         backoff = 1.0
 
         while not self._closing:
@@ -71,7 +73,7 @@ class GatewayClient:
                     wrapped = ClovordGatewayDisconnectedError(str(exc))
                     self._logger.error("%s", wrapped)
 
-            if self._closing:
+            if self._closing or self._reconnect_forbidden:
                 break
 
             wait_time = min(backoff, 30.0)
@@ -113,6 +115,8 @@ class GatewayClient:
                         raise ClovordGatewayDisconnectedError(reason)
                     elif msg.type in {aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSED}:
                         close_code = ws.close_code
+                        if self._is_no_reconnect_close_code(close_code):
+                            self._reconnect_forbidden = True
                         detail = self._string_or_none(msg.extra)
                         reason = f"Gateway closed the connection (code={close_code}"
                         if detail:
@@ -121,6 +125,8 @@ class GatewayClient:
                         raise ClovordGatewayDisconnectedError(reason)
 
                 close_code = ws.close_code
+                if self._is_no_reconnect_close_code(close_code):
+                    self._reconnect_forbidden = True
                 raise ClovordGatewayDisconnectedError(
                     f"Gateway connection ended (code={close_code})"
                 )
@@ -163,6 +169,8 @@ class GatewayClient:
         if op == GATEWAY_OP_DISPATCH and isinstance(event_name, str):
             if self._is_gateway_error_event(event_name):
                 await self._bot._handle_gateway_event(event_name, data_full, data_part)
+                if self._should_forbid_reconnect_for_gateway_error(data_part):
+                    self._reconnect_forbidden = True
                 if self._should_disconnect_for_gateway_error(data_part):
                     raise self._build_gateway_error_from_payload(payload)
                 return
@@ -395,6 +403,24 @@ class GatewayClient:
                 return True
 
         return False
+
+    @classmethod
+    def _should_forbid_reconnect_for_gateway_error(cls, data: Any) -> bool:
+        if not isinstance(data, dict):
+            return False
+        if data.get("reconnect") is False:
+            return True
+
+        for key in ("errors", "options", "status"):
+            nested = data.get(key)
+            if isinstance(nested, dict) and nested.get("reconnect") is False:
+                return True
+
+        return False
+
+    @staticmethod
+    def _is_no_reconnect_close_code(close_code: int | None) -> bool:
+        return isinstance(close_code, int) and 4100 <= close_code < 4200
 
     @classmethod
     def _redact_sensitive_payload(cls, value: Any) -> Any:
