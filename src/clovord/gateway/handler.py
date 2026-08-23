@@ -12,6 +12,7 @@ from ..errors import (
     ClovordGatewayDisconnectedError,
     ClovordInvalidTokenError,
 )
+from ..http import HTTPClient
 from ..utils.logger import get_logger
 
 if TYPE_CHECKING:
@@ -200,6 +201,7 @@ class GatewayClient:
                     "intents": intents_list,
                     "encoding": "json",
                     "compress": "none",
+                    "api_version": HTTPClient.API_VERSION,
                 }
             },
         }

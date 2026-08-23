@@ -21,6 +21,7 @@ async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None
     user_id = bot.user.id if bot.user is not None else "unknown"
     bot._logger.info("Connected to gateway as %s (%s)", username, user_id)
     _log_ready_intents(bot, data_part)
+    _log_api_info(bot, data_part)
 
     if bot._auto_online_presence and not bot._presence_set_explicitly:
         try:
@@ -30,6 +31,34 @@ async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None
 
     await check_and_notify_library_update(bot)
     await bot.events.dispatch(INTERNAL_EVENT_NAME)
+
+
+def _log_api_info(bot: Bot, data: Any) -> None:
+    if not isinstance(data, dict):
+        return
+
+    api = data.get("api")
+    if not isinstance(api, dict):
+        return
+
+    client_version = api.get("version") or "unknown"
+    build = api.get("build") if isinstance(api.get("build"), dict) else {}
+    build_id = build.get("build_id", "N/A")
+    commit = build.get("commit") or "N/A"
+    channel = build.get("channel") or "N/A"
+    supported = api.get("supported_versions")
+    supported_text = ", ".join(str(item) for item in supported) if isinstance(supported, list) else "N/A"
+
+    log_message = (
+        "=== CLOVORD API INFO ===\n"
+        f"REST API Version: {client_version}\n"
+        f"Supported Versions: {supported_text}\n"
+        f"Backend Build ID: {build_id}\n"
+        f"Commit: {commit}\n"
+        f"Channel: {channel}\n"
+        "========================"
+    )
+    bot._logger.info(log_message)
 
 
 def _log_ready_intents(bot: Bot, data: Any) -> None:

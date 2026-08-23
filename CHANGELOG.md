@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.20] - 2026-08-23
+### Added
+- Send `api_version` in gateway Identify and log backend build info from READY `api` payload.
+
 ## [0.1.17] - 2026-08-17
 ### Changed
 - Default REST base URL is now `https://clovord.com/api/v2`.

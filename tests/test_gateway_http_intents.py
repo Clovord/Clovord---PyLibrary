@@ -209,6 +209,73 @@ async def test_domainlist_dispatch_is_not_treated_as_gateway_error() -> None:
 
 
 @pytest.mark.asyncio
+async def test_ready_logs_api_info(caplog: pytest.LogCaptureFixture) -> None:
+    from clovord.events import EventManager
+    from clovord.gateway.events.ready import handle as handle_ready
+    from clovord.utils.logger import get_logger
+
+    class _ReadyBot(_DummyBot):
+        def __init__(self) -> None:
+            super().__init__()
+            self.events = EventManager()
+            self._logger = get_logger()
+            self._auto_online_presence = False
+            self._user = None
+
+        @property
+        def user(self):
+            return self._user
+
+    bot = _ReadyBot()
+    with caplog.at_level("INFO"):
+        await handle_ready(
+            bot,
+            None,
+            {
+                "user": {"id": "1", "username": "testbot"},
+                "api": {
+                    "version": "v2",
+                    "supported_versions": ["v1", "v2"],
+                    "build": {
+                        "build_id": 42,
+                        "commit": "abc1234",
+                        "channel": "stable",
+                    },
+                },
+            },
+        )
+
+    assert any("=== CLOVORD API INFO ===" in record.message for record in caplog.records)
+    assert any("REST API Version: v2" in record.message for record in caplog.records)
+    assert any("Backend Build ID: 42" in record.message for record in caplog.records)
+
+
+def test_http_client_api_version_matches_base_url() -> None:
+    assert HTTPClient.API_VERSION == "v2"
+    assert HTTPClient.BASE_URL.endswith(f"/{HTTPClient.API_VERSION}")
+
+
+@pytest.mark.asyncio
+async def test_gateway_identify_includes_api_version() -> None:
+    bot = _DummyBot()
+    gateway = GatewayClient(bot)
+    captured: dict[str, object] = {}
+
+    async def _fake_send(payload: dict[str, object]) -> None:
+        captured["payload"] = payload
+
+    gateway._token = "bot-token"
+    gateway._send = _fake_send  # type: ignore[method-assign]
+
+    await gateway._identify()
+
+    payload = captured["payload"]
+    assert isinstance(payload, dict)
+    identify = payload["d"]["identify"]  # type: ignore[index]
+    assert identify["api_version"] == HTTPClient.API_VERSION  # type: ignore[index]
+
+
+@pytest.mark.asyncio
 async def test_ready_logs_denied_intents(caplog: pytest.LogCaptureFixture) -> None:
     from clovord.events import EventManager
     from clovord.gateway.events.ready import handle as handle_ready
