@@ -68,3 +68,53 @@ async def test_check_and_notify_library_update_skips_when_current(monkeypatch: p
 
     assert called["fetch"] is True
     assert called["handle"] is False
+
+
+@pytest.mark.asyncio
+async def test_library_update_gateway_logs_current_and_new_version(
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from clovord.events import EventManager
+    from clovord.gateway.events import library_update
+
+    class _Bot:
+        def __init__(self) -> None:
+            self.events = EventManager()
+
+    bot = _Bot()
+    monkeypatch.setattr(library_update, "__version__", "0.1.20")
+
+    with caplog.at_level("INFO"):
+        await library_update.handle(
+            bot,
+            data_part={
+                "library": "clovord.py",
+                "version": "0.1.21",
+                "message": "Release 0.1.21",
+                "commit": "abc123",
+                "download_url": "https://pypi.org/project/clovord.py/0.1.21/",
+            },
+        )
+
+    assert any("Current Version: 0.1.20" in record.message for record in caplog.records)
+    assert any("New Version: 0.1.21" in record.message for record in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_library_update_gateway_skips_when_already_current(
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from clovord.gateway.events import library_update
+
+    class _Bot:
+        pass
+
+    monkeypatch.setattr(library_update, "__version__", "0.1.21")
+
+    with caplog.at_level("INFO"):
+        await library_update.handle(
+            _Bot(),
+            data_part={"library": "clovord.py", "version": "0.1.21"},
+        )
+
+    assert not any("LIBRARY UPDATE AVAILABLE" in record.message for record in caplog.records)

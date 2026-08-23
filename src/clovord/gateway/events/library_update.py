@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-
+from ... import __version__
 from ...utils.logger import get_logger
-
-
-from ...models.message import Message
+from ...utils.pypi import is_version_outdated
 
 if TYPE_CHECKING:
     from ...bot import Bot
@@ -16,22 +14,38 @@ INTERNAL_EVENT_NAME = "on_library_update"
 
 
 logger = get_logger("LibraryUpdater")
+
+
+def _normalize_release_version(value: Any) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    if not normalized or normalized.lower() in {"main", "master", "unknown"}:
+        return None
+    return normalized
+
+
 async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None = None) -> None:
-    library = data_part.get("library") if data_part else "Python"
-    version = data_part.get("version") if data_part else "unknown"
-    current_version = data_part.get("current_version") if data_part else None
-    download_url = data_part.get("download_url") if data_part else None
-    commit = data_part.get("commit") if data_part else None
-    message = data_part.get("message") if data_part else None
+    payload = data_part if isinstance(data_part, dict) else {}
+
+    library = payload.get("library") or "clovord.py"
+    new_version = _normalize_release_version(payload.get("version"))
+    current_version = payload.get("current_version") or __version__
+    download_url = payload.get("download_url")
+    commit = payload.get("commit")
+    message = payload.get("message")
+
+    if new_version and current_version and not is_version_outdated(current_version, new_version):
+        return
+
+    if new_version and not download_url:
+        download_url = f"https://pypi.org/project/clovord.py/{new_version}/"
 
     log_message = (
         "=== LIBRARY UPDATE AVAILABLE ===\n"
         f"Library: {library}\n"
-        f"Version: {version}\n"
-    )
-    if current_version:
-        log_message += f"Current Version: {current_version}\n"
-    log_message += (
+        f"Current Version: {current_version or 'unknown'}\n"
+        f"New Version: {new_version or 'unknown'}\n"
         f"Commit: {commit or 'N/A'}\n"
         f"Message: {message or 'No release message provided.'}\n"
         f"Download URL: {download_url or 'N/A'}\n"
@@ -39,4 +53,4 @@ async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None
     )
     logger.info(log_message)
 
-    await bot.events.dispatch(INTERNAL_EVENT_NAME, data_part)
+    await bot.events.dispatch(INTERNAL_EVENT_NAME, payload)

@@ -49,25 +49,34 @@ jobs:
         env:
           API_BASE_URL: ${{ secrets.ORG_API_BASE_URL }}
           BUILD_WEBHOOK_TOKEN: ${{ secrets.CLOVORD_BUILD_WEBHOOK_SECRET || secrets.ORG_API_BUILD_WEBHOOK_SECRET }}
-          PACKAGE_VERSION: "${{ github.ref_name }}"
         run: |
           set -e
           BUILD_MESSAGE="$(git log -1 --pretty=%B | tr -d '\r' | sed 's/^\s*//;s/\s*$//')"
           python - <<'PY'
           import json
           import os
-          import urllib.request
+          import tomllib
           import urllib.error
+          import urllib.request
+          from pathlib import Path
+
+          with Path("pyproject.toml").open("rb") as handle:
+              package_version = str(tomllib.load(handle)["project"]["version"]).strip()
 
           api_base = os.environ["API_BASE_URL"].rstrip("/")
           url = f"{api_base}/v1/webhooks/builds"
           token = os.environ["BUILD_WEBHOOK_TOKEN"]
+          release_message = os.environ.get("BUILD_MESSAGE", "").strip() or f"Release {package_version}"
           payload = {
               "action": "request",
               "commit": os.environ["GITHUB_SHA"],
-              "message": os.environ.get("BUILD_MESSAGE", "").strip() or f"Release {os.environ.get('PACKAGE_VERSION', '')}",
+              "message": release_message,
               "target_types": ["library"],
-              "metadata": {"version": os.environ.get("PACKAGE_VERSION", "")},
+              "metadata": {
+                  "library": "clovord.py",
+                  "version": package_version,
+                  "download_url": f"https://pypi.org/project/clovord.py/{package_version}/",
+              },
           }
           data = json.dumps(payload).encode("utf-8")
           req = urllib.request.Request(url, data=data, method="POST")

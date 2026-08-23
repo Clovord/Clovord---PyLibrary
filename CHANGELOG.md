@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.21] - 2026-08-23
+### Fixed
+- Improve `LIBRARY_UPDATE` logging with current and new version, skip stale notices, and fix release webhook version metadata.
+
 ## [0.1.20] - 2026-08-23
 ### Added
 - Send `api_version` in gateway Identify and log backend build info from READY `api` payload.
