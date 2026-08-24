@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "clovord.py"
-version = "0.1.21"
+version = "0.1.22"
 description = "Official Python library for the Clovord platform."
 readme = "README.md"
 license = "MIT"

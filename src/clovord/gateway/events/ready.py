@@ -25,7 +25,17 @@ async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None
 
     if bot._auto_online_presence and not bot._presence_set_explicitly:
         try:
-            await bot.gateway.update_presence("online", _from_ready=True)
+            ready_presence = data_part.get("presence") if isinstance(data_part, dict) else None
+            desired_status = "online"
+            custom_status = None
+            if isinstance(ready_presence, dict):
+                desired_status = str(
+                    ready_presence.get("desired_status")
+                    or ready_presence.get("status")
+                    or "online"
+                ).lower()
+                custom_status = ready_presence.get("custom_status")
+            await bot.gateway.update_presence(desired_status, custom_status=custom_status, _from_ready=True)
         except Exception as exc:
             bot._logger.warning("Failed to set online presence: %s", exc)
 

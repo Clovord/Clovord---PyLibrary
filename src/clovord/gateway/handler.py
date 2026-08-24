@@ -260,7 +260,7 @@ class GatewayClient:
         *,
         _from_ready: bool = False,
     ) -> None:
-        allowed_statuses = {"online", "idle", "dnd", "offline"}
+        allowed_statuses = {"online", "idle", "dnd", "invisible", "offline"}
         normalized_status = status.strip().lower()
         if normalized_status not in allowed_statuses:
             raise ClovordError(
