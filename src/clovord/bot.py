@@ -32,6 +32,7 @@ class Bot:
         *,
         intents: Intents | int | None = None,
         auto_online_presence: bool = True,
+        autoupdate: bool = False,
         event_error_policy: EventErrorPolicy = "log",
     ) -> None:
         self.events = EventManager(error_policy=event_error_policy)
@@ -41,6 +42,9 @@ class Bot:
         self._logger = get_logger()
         self._run_task: asyncio.Task[None] | None = None
         self._auto_online_presence = auto_online_presence
+        self.autoupdate = bool(autoupdate)
+        self._library_autoupdate_started = False
+        self._library_update_notice_sent = False
         self._presence_set_explicitly = False
         self._token: str | None = None
         self._is_running = False

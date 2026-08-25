@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from ... import __version__
+from ...utils.library_autoupdate import apply_library_autoupdate, is_python_library
 from ...utils.logger import get_logger
 from ...utils.pypi import is_version_outdated
 
@@ -29,6 +30,9 @@ async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None
     payload = data_part if isinstance(data_part, dict) else {}
 
     library = payload.get("library") or "clovord.py"
+    if not is_python_library(library):
+        return
+
     new_version = _normalize_release_version(payload.get("version"))
     current_version = payload.get("current_version") or __version__
     download_url = payload.get("download_url")
@@ -54,3 +58,6 @@ async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None
     logger.info(log_message)
 
     await bot.events.dispatch(INTERNAL_EVENT_NAME, payload)
+
+    if getattr(bot, "autoupdate", False):
+        await apply_library_autoupdate(bot, version=new_version)

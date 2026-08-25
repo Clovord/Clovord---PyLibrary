@@ -25,6 +25,7 @@ async def test_check_and_notify_library_update_sends_notice_when_outdated(monkey
 
     class _Bot:
         _library_update_notice_sent = False
+        autoupdate = False
 
     async def _fake_fetch(package: str, **kwargs):
         assert package == "clovord.py"
@@ -63,7 +64,7 @@ async def test_check_and_notify_library_update_skips_when_current(monkeypatch: p
     monkeypatch.setattr(library_update_check, "fetch_pypi_latest_version", _fake_fetch)
     monkeypatch.setattr(library_update_check.library_update, "handle", _fake_handle)
 
-    bot = type("_Bot", (), {"_library_update_notice_sent": False})()
+    bot = type("_Bot", (), {"_library_update_notice_sent": False, "autoupdate": False})()
     await library_update_check.check_and_notify_library_update(bot)
 
     assert called["fetch"] is True
@@ -80,6 +81,7 @@ async def test_library_update_gateway_logs_current_and_new_version(
     class _Bot:
         def __init__(self) -> None:
             self.events = EventManager()
+            self.autoupdate = False
 
     bot = _Bot()
     monkeypatch.setattr(library_update, "__version__", "0.1.20")
@@ -107,7 +109,7 @@ async def test_library_update_gateway_skips_when_already_current(
     from clovord.gateway.events import library_update
 
     class _Bot:
-        pass
+        autoupdate = False
 
     monkeypatch.setattr(library_update, "__version__", "0.1.21")
 
@@ -118,3 +120,145 @@ async def test_library_update_gateway_skips_when_already_current(
         )
 
     assert not any("LIBRARY UPDATE AVAILABLE" in record.message for record in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_library_update_skips_non_python_library(
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from clovord.events import EventManager
+    from clovord.gateway.events import library_update
+
+    called = {"autoupdate": False}
+
+    class _Bot:
+        def __init__(self) -> None:
+            self.events = EventManager()
+            self.autoupdate = True
+
+    async def _fake_autoupdate(bot, *, version=None):
+        called["autoupdate"] = True
+        return True
+
+    monkeypatch.setattr(library_update, "apply_library_autoupdate", _fake_autoupdate)
+    monkeypatch.setattr(library_update, "__version__", "0.1.20")
+
+    with caplog.at_level("INFO"):
+        await library_update.handle(
+            _Bot(),
+            data_part={"library": "clovord.js", "version": "9.9.9"},
+        )
+
+    assert not any("LIBRARY UPDATE AVAILABLE" in record.message for record in caplog.records)
+    assert called["autoupdate"] is False
+
+
+@pytest.mark.asyncio
+async def test_library_update_autoupdate_false_does_not_install(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from clovord.events import EventManager
+    from clovord.gateway.events import library_update
+
+    called = {"autoupdate": False}
+
+    class _Bot:
+        def __init__(self) -> None:
+            self.events = EventManager()
+            self.autoupdate = False
+
+    async def _fake_autoupdate(bot, *, version=None):
+        called["autoupdate"] = True
+        return True
+
+    monkeypatch.setattr(library_update, "apply_library_autoupdate", _fake_autoupdate)
+    monkeypatch.setattr(library_update, "__version__", "0.1.20")
+
+    await library_update.handle(
+        _Bot(),
+        data_part={"library": "clovord.py", "version": "0.1.21"},
+    )
+
+    assert called["autoupdate"] is False
+
+
+@pytest.mark.asyncio
+async def test_library_update_autoupdate_true_triggers_install(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from clovord.events import EventManager
+    from clovord.gateway.events import library_update
+
+    calls: list[str | None] = []
+
+    class _Bot:
+        def __init__(self) -> None:
+            self.events = EventManager()
+            self.autoupdate = True
+
+    async def _fake_autoupdate(bot, *, version=None):
+        calls.append(version)
+        return True
+
+    monkeypatch.setattr(library_update, "apply_library_autoupdate", _fake_autoupdate)
+    monkeypatch.setattr(library_update, "__version__", "0.1.20")
+
+    await library_update.handle(
+        _Bot(),
+        data_part={"library": "clovord.py", "version": "0.1.21"},
+    )
+
+    assert calls == ["0.1.21"]
+
+
+@pytest.mark.asyncio
+async def test_apply_library_autoupdate_runs_pip_and_restarts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from clovord.utils import library_autoupdate
+
+    closed = {"value": False}
+    restarted: list[list[str]] = []
+
+    class _Proc:
+        returncode = 0
+
+        async def communicate(self):
+            return b"ok", b""
+
+    class _Bot:
+        _library_autoupdate_started = False
+        autoupdate = True
+
+        async def close(self) -> None:
+            closed["value"] = True
+
+    async def _fake_exec(*args, **kwargs):
+        assert args[1:5] == ("-m", "pip", "install", "--upgrade")
+        assert args[5] == "clovord.py==0.1.23"
+        return _Proc()
+
+    def _fake_execv(executable, argv):
+        restarted.append(list(argv))
+
+    monkeypatch.setattr(library_autoupdate.asyncio, "create_subprocess_exec", _fake_exec)
+    monkeypatch.setattr(library_autoupdate.os, "execv", _fake_execv)
+    monkeypatch.setattr(library_autoupdate.sys, "argv", ["bot.py", "--flag"])
+    monkeypatch.setattr(library_autoupdate.sys, "executable", "python")
+
+    result = await library_autoupdate.apply_library_autoupdate(_Bot(), version="0.1.23")
+
+    assert result is True
+    assert closed["value"] is True
+    assert restarted == [["python", "bot.py", "--flag"]]
+
+
+@pytest.mark.asyncio
+async def test_apply_library_autoupdate_skips_when_already_started() -> None:
+    from clovord.utils.library_autoupdate import apply_library_autoupdate
+
+    class _Bot:
+        _library_autoupdate_started = True
+        autoupdate = True
+
+    assert await apply_library_autoupdate(_Bot(), version="0.1.23") is False
