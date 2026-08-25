@@ -78,7 +78,7 @@ class GatewayClient:
                 break
 
             wait_time = min(backoff, 30.0)
-            self._logger.info("Reconnecting gateway in %.1fs", wait_time)
+            self._logger.debug("Reconnecting gateway in %.1fs", wait_time)
             await asyncio.sleep(wait_time)
             backoff = min(backoff * 2, 30.0)
 
@@ -104,7 +104,7 @@ class GatewayClient:
                 self._identify_sent = False
                 self._last_heartbeat = None
                 self._latency = float("nan")
-                self._logger.info("Connected to gateway")
+                self._logger.debug("Connected to gateway")
 
                 async for msg in ws:
                     if msg.type in {aiohttp.WSMsgType.TEXT, aiohttp.WSMsgType.BINARY}:
@@ -205,7 +205,7 @@ class GatewayClient:
                 }
             },
         }
-        self._logger.info("Sending IDENTIFY with intents=%s", intents_list)
+        self._logger.debug("Sending IDENTIFY with intents=%s", intents_list)
         await self._send(payload)
         self._identify_sent = True
 
@@ -280,7 +280,7 @@ class GatewayClient:
         }
         if not _from_ready:
             self._bot._presence_set_explicitly = True
-        self._logger.info("Sending presence_update status=%s", normalized_status)
+        self._logger.debug("Sending presence_update status=%s", normalized_status)
         await self._send(payload)
 
     def _build_gateway_error_from_payload(self, payload: dict[str, Any]) -> ClovordError:

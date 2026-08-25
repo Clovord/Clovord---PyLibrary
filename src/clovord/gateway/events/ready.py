@@ -85,7 +85,7 @@ def _log_ready_intents(bot: Bot, data: Any) -> None:
         granted_text = ", ".join(
             f"{name} ({level})" if level else name for name, level in granted
         )
-        bot._logger.info("Granted gateway intents: %s", granted_text)
+        bot._logger.debug("Granted gateway intents: %s", granted_text)
 
     for intent_name in denied:
         bot._logger.error(
