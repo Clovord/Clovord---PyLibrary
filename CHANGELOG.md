@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.25] - 2026-08-26
+### Added
+- `TYPING_START` gateway event (`on_typing_start`) and `Channel.trigger_typing()` for Discord-compatible typing indicators.
+
 ## [0.1.24] - 2026-08-26
 ### Changed
 - Library logs always use a fixed `❱❱ CLV - {ISO-8601} - LEVEL ❱❱` prefix on every physical line (including multi-line notices and tracebacks) via a dedicated `clovord` logger (not the process root), so they stay distinguishable when bots run alongside other async logging.

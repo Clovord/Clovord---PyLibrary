@@ -43,3 +43,7 @@ class Channel:
             payload.update(extra)
 
         return await self._bot.http.post(f"/channels/{self.id}/messages", json=payload)
+
+    async def trigger_typing(self) -> Any:
+        """Post a typing indicator to this channel (Discord-compatible)."""
+        return await self._bot.http.post(f"/channels/{self.id}/typing")
