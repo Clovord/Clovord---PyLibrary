@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.24] - 2026-08-26
+### Changed
+- Library logs always use a fixed `❱❱ CLV - {ISO-8601} - LEVEL ❱❱` prefix on every physical line (including multi-line notices and tracebacks) via a dedicated `clovord` logger (not the process root), so they stay distinguishable when bots run alongside other async logging.
+
 ## [0.1.21] - 2026-08-23
 ### Fixed
 - Improve `LIBRARY_UPDATE` logging with current and new version, skip stale notices, and fix release webhook version metadata.
