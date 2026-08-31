@@ -1,8 +1,8 @@
-clovord.py v0.1.26dev1 — Developer Preview
+clovord.py v0.1.26
 
-Phase 1 of the Clovord-native Python SDK is here. This is a dev build — install with:
+Phase 1 of the Clovord-native Python SDK is here. Update with:
 
-  pip install clovord.py==0.1.26dev1
+  pip install -U clovord.py
 
 What's new
 
@@ -39,4 +39,4 @@ Quick example
       )
 
 Docs: https://clovord.com/developers/docs
-PyPI: https://pypi.org/project/clovord.py/0.1.26dev1/
+PyPI: https://pypi.org/project/clovord.py/0.1.26/
