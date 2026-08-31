@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.34] - 2026-08-31
+### Fixed
+- Remove `reason` and `sources` from `DomainlistEntry`; bot API responses do not expose these fields.
+- Document `DomainlistEntry.host` as an SDK helper that joins `subdomain` and `domain`.
+
+### Docs
+- Correct Phase 3 developer news for public domainlist fields.
+
 ## [0.1.33] - 2026-08-31
 ### Fixed
 - Slash command dispatch now rejects interactions that are missing required handler parameters before invoking the callback.
@@ -15,7 +23,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ## [0.1.31] - 2026-08-31
 ### Added
 - Domainlist REST: `bot.search_domain()` and `bot.search_domains()` for `GET /domains/search`.
-- `DomainlistEntry.from_search_response()` for multi-status API envelopes, plus `reason`, `sources`, and `host`.
+- `DomainlistEntry.from_search_response()` for multi-status API envelopes.
 - Components V2 builders: `StringSelect`, `SelectOption`, `Section`, `Thumbnail`, `MediaGallery`, `MediaGalleryItem`, and `ButtonStyle`.
 
 ## [0.1.30] - 2026-08-31

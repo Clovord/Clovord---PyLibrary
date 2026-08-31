@@ -40,8 +40,6 @@ class _FakeDomainHTTP:
                             "status": "malicious",
                             "score": 95,
                             "flags": 1,
-                            "reason": "phishing",
-                            "sources": ["openphish"],
                         }
                     }
                 ]
@@ -68,8 +66,6 @@ async def test_search_domain_parses_multi_status_response() -> None:
     assert entry.domain == "evil.test"
     assert entry.status == "malicious"
     assert entry.score == 95
-    assert entry.reason == "phishing"
-    assert entry.sources == ["openphish"]
 
     method, path, kwargs = bot.http.calls[0]  # type: ignore[attr-defined]
     assert method == "GET"

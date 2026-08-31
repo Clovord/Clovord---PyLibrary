@@ -10,7 +10,8 @@ Domainlist REST (bot-auth)
 - bot.search_domain(domain) — exact lookup via GET /domains/search
 - bot.search_domains(...) — filtered search with q, status, tags, limit, and more
 - DomainlistEntry.from_search_response() for multi-status API envelopes
-- New fields on DomainlistEntry: reason, sources, host
+- DomainlistEntry exposes bot-visible fields: domain, subdomain, slug, status, score, flags, tags, hash, metadata, timestamps
+- entry.host — SDK helper that joins subdomain + domain (e.g. api + example.com → api.example.com)
 
 Components V2
 - StringSelect and SelectOption for dropdown menus
@@ -32,7 +33,7 @@ async def domainlookup(interaction, domain: str):
         await interaction.followup.edit_original(content=f"No result for `{domain}`")
         return
     await interaction.followup.edit_original(
-        content=f"**{entry.host or entry.domain}** — {entry.status} (score {entry.score})"
+        content=f"**{entry.domain}** — {entry.status} (score {entry.score})"
     )
 ```
 

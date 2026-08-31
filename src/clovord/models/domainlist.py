@@ -18,8 +18,6 @@ class DomainlistEntry:
     subdomain: str | None = None
     slug: str | None = None
     tags: str | None = None
-    reason: str | None = None
-    sources: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
     record_updated: str | None = None
     record_added: str | None = None
@@ -28,7 +26,7 @@ class DomainlistEntry:
 
     @property
     def host(self) -> str:
-        """Fully qualified host (subdomain + domain) when available."""
+        """Full hostname built from subdomain + domain (SDK helper, not an API field)."""
         domain = self.domain.strip()
         subdomain = (self.subdomain or "").strip().strip(".")
         if subdomain and domain:
@@ -39,11 +37,6 @@ class DomainlistEntry:
     def from_dict(cls, payload: dict[str, Any] | None) -> DomainlistEntry:
         data = payload if isinstance(payload, dict) else {}
         metadata = data.get("metadata")
-        sources = data.get("sources")
-        if isinstance(sources, list):
-            normalized_sources = [str(item) for item in sources if str(item).strip()]
-        else:
-            normalized_sources = []
         return cls(
             domain=optional_str(data.get("domain")) or "",
             hash=optional_str(data.get("hash")),
@@ -53,8 +46,6 @@ class DomainlistEntry:
             subdomain=optional_str(data.get("subdomain")),
             slug=optional_str(data.get("slug")),
             tags=optional_str(data.get("tags")),
-            reason=optional_str(data.get("reason")),
-            sources=normalized_sources,
             metadata=dict(metadata) if isinstance(metadata, dict) else {},
             record_updated=optional_str(data.get("record_updated")),
             record_added=optional_str(data.get("record_added")),
