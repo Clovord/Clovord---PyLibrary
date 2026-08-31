@@ -16,6 +16,14 @@ class _DummyBot:
         self.intents = Intents.none()
         self._presence_set_explicitly = False
 
+    def _mark_ready(self, *, at, guild_ids, guilds) -> None:
+        self._ready_at = at
+        self._guild_ids = tuple(guild_ids)
+        self._guilds = dict(guilds)
+
+    def _mark_disconnected(self) -> None:
+        return None
+
 
 def test_intents_to_gateway_list_serialization() -> None:
     intents = Intents.none()
@@ -316,6 +324,7 @@ async def test_ready_logs_denied_intents(caplog: pytest.LogCaptureFixture) -> No
 async def test_domainlist_entry_create_unwraps_entry() -> None:
     from clovord.events import EventManager
     from clovord.gateway.events.domainlist_entry_create import handle as handle_create
+    from clovord.models.domainlist import DomainlistEntry
 
     received: list[object] = []
 
@@ -331,7 +340,9 @@ async def test_domainlist_entry_create_unwraps_entry() -> None:
 
     entry = {"id": "1", "domain": "example.com"}
     await handle_create(_EventBot(), None, {"entry": entry})
-    assert received == [entry]
+    assert len(received) == 1
+    assert isinstance(received[0], DomainlistEntry)
+    assert received[0].domain == "example.com"
 
 
 def test_http_retry_after_parsing_uses_bounds_and_defaults() -> None:

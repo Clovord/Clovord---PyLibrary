@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.26] - 2026-08-31
+### Added
+- Core bot lifecycle properties: `bot.is_ready`, `bot.started_at`, `bot.uptime`, `bot.guild_ids`, `bot.guilds`, and `bot.get_guild()`.
+- Clovord-native models: `Guild`, `Member`, `Role`, `DomainlistEntry`, `Typing`, and `PartialMessage`.
+- Expanded `User`, `Message`, and `Channel` models with additional API fields and `.raw` payload access.
+- Gateway events: `MESSAGE_DELETE`, `CHANNEL_UPDATE`, `GUILD_CREATE`, `GUILD_UPDATE`, `GUILD_DELETE`, `GUILD_MEMBER_ADD`, `GUILD_MEMBER_UPDATE`, `GUILD_MEMBER_REMOVE`, and `REIDENTIFIED`.
+- READY now caches guild objects and marks the bot as ready.
+- Time helpers: `format_uptime()`, `format_timestamp()`, and `format_relative_timestamp()` for readable durations and `<t:unix:R>` markers.
+
 ## [0.1.25] - 2026-08-26
 ### Added
 - `TYPING_START` gateway event (`on_typing_start`) and `Channel.trigger_typing()` for Discord-compatible typing indicators.

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from ...models.domainlist import DomainlistEntry
+
 if TYPE_CHECKING:
     from ...bot import Bot
 
@@ -16,4 +18,9 @@ def _extract_entry(data_part: dict | None) -> Any:
 
 
 async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None = None) -> None:
-    await bot.events.dispatch(INTERNAL_EVENT_NAME, _extract_entry(data_part))
+    entry = _extract_entry(data_part if isinstance(data_part, dict) else None)
+    if isinstance(entry, dict):
+        await bot.events.dispatch(INTERNAL_EVENT_NAME, DomainlistEntry.from_dict(entry))
+        return
+
+    await bot.events.dispatch(INTERNAL_EVENT_NAME, entry)

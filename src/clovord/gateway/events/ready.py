@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
+from ...models.guild import Guild
 from ...models.user import User
 from ...utils.library_update_check import check_and_notify_library_update
 
@@ -16,6 +18,13 @@ async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None
     user = _extract_ready_user(data_part)
     if user is not None:
         bot._user = user
+
+    guild_ids, guilds = _extract_ready_guilds(data_part, bot=bot)
+    bot._mark_ready(
+        at=datetime.now(timezone.utc),
+        guild_ids=guild_ids,
+        guilds=guilds,
+    )
 
     username = bot.user.username if bot.user is not None else "unknown"
     user_id = bot.user.id if bot.user is not None else "unknown"
@@ -157,3 +166,27 @@ def _extract_ready_user(data: Any) -> User | None:
         return User.from_dict(payload)
 
     return None
+
+
+def _extract_ready_guilds(data: Any, *, bot: Bot) -> tuple[list[str], dict[str, Guild]]:
+    if not isinstance(data, dict):
+        return [], {}
+
+    guild_ids: list[str] = []
+    for item in data.get("guild_ids") or []:
+        text = str(item).strip()
+        if text and text not in guild_ids:
+            guild_ids.append(text)
+
+    guilds: dict[str, Guild] = {}
+    for item in data.get("guilds") or []:
+        if not isinstance(item, dict):
+            continue
+        guild = Guild.from_dict(item, bot=bot)
+        if not guild.id:
+            continue
+        guilds[guild.id] = guild
+        if guild.id not in guild_ids:
+            guild_ids.append(guild.id)
+
+    return guild_ids, guilds

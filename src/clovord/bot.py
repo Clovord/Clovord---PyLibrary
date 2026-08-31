@@ -6,13 +6,15 @@ import importlib
 import importlib.util
 import inspect
 import pkgutil
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 from .errors import ClovordExtensionError, ClovordInvalidTokenError
 from .events import EventErrorPolicy, EventManager
 from .commands import CommandTree
+from .models.guild import Guild
 from .models.user import User
 from .gateway.events.dispatcher import dispatch_gateway_event
 from .gateway.handler import GatewayClient
@@ -51,6 +53,10 @@ class Bot:
         self._intents = Intents.none()
         self._loaded_extensions: dict[str, object] = {}
         self._user: User | None = None
+        self._ready_at: datetime | None = None
+        self._is_ready = False
+        self._guild_ids: tuple[str, ...] = ()
+        self._guilds: dict[str, Guild] = {}
         self.set_intents(Intents.none() if intents is None else intents)
 
     @property
@@ -101,6 +107,63 @@ class Bot:
         Typical usage: ``round(bot.latency * 1000)`` for milliseconds.
         """
         return self.gateway.latency
+
+    @property
+    def is_ready(self) -> bool:
+        """Whether the bot has received READY and is connected to the gateway."""
+        return self._is_ready
+
+    @property
+    def started_at(self) -> datetime | None:
+        """UTC timestamp when the bot last received READY."""
+        return self._ready_at
+
+    @property
+    def uptime(self) -> timedelta:
+        """Elapsed time since the last READY event."""
+        if self._ready_at is None:
+            return timedelta(0)
+        return datetime.now(timezone.utc) - self._ready_at
+
+    @property
+    def guild_ids(self) -> tuple[str, ...]:
+        """Guild IDs known from the latest READY payload."""
+        return self._guild_ids
+
+    @property
+    def guilds(self) -> Mapping[str, Guild]:
+        """Guild objects cached from READY and guild gateway events."""
+        return self._guilds
+
+    def get_guild(self, guild_id: str) -> Guild | None:
+        return self._guilds.get(str(guild_id))
+
+    def _mark_ready(
+        self,
+        *,
+        at: datetime,
+        guild_ids: list[str],
+        guilds: dict[str, Guild],
+    ) -> None:
+        self._ready_at = at
+        self._is_ready = True
+        self._guild_ids = tuple(guild_ids)
+        self._guilds = dict(guilds)
+
+    def _mark_disconnected(self) -> None:
+        self._is_ready = False
+
+    def _cache_guild(self, guild: Guild) -> None:
+        if guild.id:
+            self._guilds[guild.id] = guild
+            if guild.id not in self._guild_ids:
+                self._guild_ids = (*self._guild_ids, guild.id)
+
+    def _remove_guild(self, guild_id: str) -> Guild | None:
+        return self._guilds.pop(str(guild_id), None)
+
+    def _set_guild_ids(self, guild_ids: list[str]) -> None:
+        self._guild_ids = tuple(str(guild_id) for guild_id in guild_ids)
 
     def load_extension(self, module_name: str) -> None:
         module = importlib.import_module(module_name)
@@ -207,6 +270,7 @@ class Bot:
         await self.gateway.close()
         await self.http.close()
         self._is_running = False
+        self._mark_disconnected()
 
     async def __aenter__(self) -> Bot:
         return self

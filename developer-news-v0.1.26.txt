@@ -1,0 +1,42 @@
+clovord.py v0.1.26dev1 — Developer Preview
+
+Phase 1 of the Clovord-native Python SDK is here. This is a dev build — install with:
+
+  pip install clovord.py==0.1.26dev1
+
+What's new
+
+Bot lifecycle
+- bot.is_ready — whether the bot received READY
+- bot.started_at — UTC timestamp of the last READY event
+- bot.uptime — timedelta since READY
+- bot.guilds / bot.guild_ids / bot.get_guild() — guild cache from READY and gateway events
+
+Models
+- New: Guild, Member, Role, DomainlistEntry, Typing, PartialMessage
+- Expanded: User, Message, Channel (more API fields + .raw payload access)
+
+Gateway events
+- MESSAGE_DELETE, CHANNEL_UPDATE
+- GUILD_CREATE, GUILD_UPDATE, GUILD_DELETE
+- GUILD_MEMBER_ADD, GUILD_MEMBER_UPDATE, GUILD_MEMBER_REMOVE
+- REIDENTIFIED
+- Domainlist events now dispatch DomainlistEntry objects
+
+Time helpers
+- format_timestamp(dt, "R") — relative timestamps like "5 minutes ago"
+- format_uptime(delta) — human-readable durations
+- format_relative_timestamp(dt) — shorthand for style "R"
+
+Quick example
+
+  from clovord import Bot, format_timestamp
+
+  @bot.tree.command(name="uptime")
+  async def uptime(interaction):
+      await interaction.response.send_message(
+          f"Online since {format_timestamp(bot.started_at, 'R')}"
+      )
+
+Docs: https://clovord.com/developers/docs
+PyPI: https://pypi.org/project/clovord.py/0.1.26dev1/

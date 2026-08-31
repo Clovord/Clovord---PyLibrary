@@ -97,6 +97,7 @@ class GatewayClient:
         if self._token is None:
             raise ClovordError("CLOVORD_GATEWAY_DISCONNECTED", "Gateway token was not provided")
 
+        self._bot._mark_disconnected()
         self._session = aiohttp.ClientSession()
         try:
             async with self._session.ws_connect(self.GATEWAY_URL, heartbeat=None, autoping=True) as ws:
