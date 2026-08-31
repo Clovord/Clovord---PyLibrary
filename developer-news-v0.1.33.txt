@@ -1,0 +1,45 @@
+clovord.py v0.1.33
+
+Phase 3 of the Clovord-native Python SDK is here: domainlist REST, Components V2 builders, and reliable slash-command parameters. Update with:
+
+  pip install -U clovord.py
+
+What's new
+
+Domainlist REST (bot-auth)
+- bot.search_domain(domain) — exact lookup via GET /domains/search
+- bot.search_domains(...) — filtered search with q, status, tags, limit, and more
+- DomainlistEntry.from_search_response() for multi-status API envelopes
+- New fields on DomainlistEntry: reason, sources, host
+
+Components V2
+- StringSelect and SelectOption for dropdown menus
+- Section, Thumbnail, and MediaGallery for richer layouts
+- ButtonStyle enum for consistent button styling
+
+Slash command parameters (v0.1.32 – v0.1.33)
+- Handler parameters are auto-registered as command options (no manual @option decorators)
+- Required parameters are validated before your callback runs
+- Missing required args no longer crash with TypeError on the bot side
+
+Example — domain lookup slash command
+```python
+@bot.tree.command(name="domainlookup", description="Look up a domain")
+async def domainlookup(interaction, domain: str):
+    await interaction.response.defer()
+    entry = await bot.search_domain(domain)
+    if entry is None:
+        await interaction.followup.edit_original(content=f"No result for `{domain}`")
+        return
+    await interaction.followup.edit_original(
+        content=f"**{entry.host or entry.domain}** — {entry.status} (score {entry.score})"
+    )
+```
+
+After updating, re-sync commands once:
+```python
+await bot.tree.sync()
+```
+
+Docs: https://clovord.com/developers/docs
+PyPI: https://pypi.org/project/clovord.py/0.1.33/

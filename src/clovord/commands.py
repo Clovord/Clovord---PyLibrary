@@ -4,6 +4,7 @@ import inspect
 from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 from .ui.components import has_layout_components, serialize_components
+from .utils.command_params import bind_interaction_options, extract_command_options, missing_required_parameters
 from .utils.payload import unwrap_payload
 
 if TYPE_CHECKING:
@@ -237,10 +238,11 @@ class CommandTree:
         def decorator(func: CommandCallback):
             if not inspect.iscoroutinefunction(func):
                 raise TypeError("Slash command handler must be an async function")
+            resolved_options = list(options) if options is not None else extract_command_options(func)
             self.add_command(
                 name=name,
                 description=description,
-                options=options,
+                options=resolved_options,
                 type=type,
                 nsfw=nsfw,
                 dm_permission=dm_permission,
@@ -265,11 +267,12 @@ class CommandTree:
         guild_id: str | None = None,
         callback: CommandCallback | None = None,
     ) -> dict[str, Any]:
+        resolved_options = list(options) if options is not None else extract_command_options(callback) if callback else []
         payload: dict[str, Any] = {
             "type": int(type),
             "name": str(name),
             "description": str(description or ""),
-            "options": list(options or []),
+            "options": resolved_options,
             "nsfw": bool(nsfw),
             "dm_permission": bool(dm_permission),
         }
@@ -295,7 +298,11 @@ class CommandTree:
             return False
         interaction = Interaction(self._bot, payload)
         try:
-            await handler(interaction)
+            missing = missing_required_parameters(data, handler)
+            if missing:
+                raise ValueError(f"Missing required option(s): {', '.join(missing)}")
+            kwargs = bind_interaction_options(data, handler)
+            await handler(interaction, **kwargs)
         except Exception as exc:
             await self._recover_interaction_error(interaction, exc)
         return True

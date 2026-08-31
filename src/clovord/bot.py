@@ -14,8 +14,9 @@ from typing import Any
 from .errors import ClovordExtensionError, ClovordInvalidTokenError
 from .events import EventErrorPolicy, EventManager
 from .commands import CommandTree
-from .models.guild import Guild
 from .models.channel import Channel
+from .models.domainlist import DomainlistEntry
+from .models.guild import Guild
 from .models.user import User
 from .utils.payload import unwrap_payload
 from .gateway.events.dispatcher import dispatch_gateway_event
@@ -147,6 +148,65 @@ class Bot:
         if not isinstance(payload, dict):
             raise TypeError("fetch_channel returned a non-object payload")
         return Channel.from_dict(payload, bot=self)
+
+    async def search_domain(self, domain: str) -> DomainlistEntry | None:
+        """Look up a single domain via ``GET /domains/search``.
+
+        Requires ``INTENT_DOMAINLIST_LIMITED`` (exact domain only) or
+        ``INTENT_DOMAINLIST`` for full search filters.
+        """
+        domain_value = str(domain or "").strip()
+        if not domain_value:
+            raise ValueError("domain must not be empty")
+
+        response = await self.http.get("/domains/search", params={"domain": domain_value})
+        entries = DomainlistEntry.from_search_response(response)
+        return entries[0] if entries else None
+
+    async def search_domains(
+        self,
+        *,
+        q: str | None = None,
+        domain: str | None = None,
+        reason: str | None = None,
+        status: str | None = None,
+        tags: list[str] | None = None,
+        hash: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+        include_subdomains: bool | None = None,
+        include_slugs: bool | None = None,
+    ) -> list[DomainlistEntry]:
+        """Search the Clovord domainlist via ``GET /domains/search``.
+
+        Full-text and filtered search requires ``INTENT_DOMAINLIST``.
+        Bots with only ``INTENT_DOMAINLIST_LIMITED`` may pass ``domain`` alone.
+        """
+        params: dict[str, Any] = {"offset": int(offset)}
+        if q is not None:
+            params["q"] = str(q).strip()
+        if domain is not None:
+            params["domain"] = str(domain).strip()
+        if reason is not None:
+            params["reason"] = str(reason).strip()
+        if status is not None:
+            params["status"] = str(status).strip()
+        if tags:
+            params["tags"] = [str(tag).strip() for tag in tags if str(tag).strip()]
+        if hash is not None:
+            params["hash"] = str(hash).strip()
+        if limit is not None:
+            params["limit"] = int(limit)
+        if include_subdomains is not None:
+            params["include_subdomains"] = "true" if include_subdomains else "false"
+        if include_slugs is not None:
+            params["include_slugs"] = "true" if include_slugs else "false"
+
+        if not any(key in params for key in ("q", "domain", "reason", "status", "tags", "hash")):
+            raise ValueError("search_domains requires at least one search parameter")
+
+        response = await self.http.get("/domains/search", params=params)
+        return DomainlistEntry.from_search_response(response)
 
     def _mark_ready(
         self,

@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.33] - 2026-08-31
+### Fixed
+- Slash command dispatch now rejects interactions that are missing required handler parameters before invoking the callback.
+
+## [0.1.32] - 2026-08-31
+### Fixed
+- Slash command handlers now auto-register options from function parameters and receive bound values on dispatch.
+
+## [0.1.31] - 2026-08-31
+### Added
+- Domainlist REST: `bot.search_domain()` and `bot.search_domains()` for `GET /domains/search`.
+- `DomainlistEntry.from_search_response()` for multi-status API envelopes, plus `reason`, `sources`, and `host`.
+- Components V2 builders: `StringSelect`, `SelectOption`, `Section`, `Thumbnail`, `MediaGallery`, `MediaGalleryItem`, and `ButtonStyle`.
+
 ## [0.1.30] - 2026-08-31
 ### Changed
 - `InteractionFollowup` now uses Clovord-native interaction endpoints instead of webhook URLs:
