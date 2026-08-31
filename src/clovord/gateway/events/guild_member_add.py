@@ -22,6 +22,7 @@ async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None
     member = Member.from_dict(
         data_part.get("member") if isinstance(data_part.get("member"), dict) else data_part,
         guild_id=guild_id or None,
+        bot=bot,
     )
     if guild_payload is not None:
         bot._cache_guild(Guild.from_dict(guild_payload, bot=bot))

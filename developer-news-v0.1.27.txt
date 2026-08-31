@@ -1,0 +1,44 @@
+clovord.py v0.1.27
+
+Phase 2 brings REST resource methods to the Clovord-native Python SDK. Update with:
+
+  pip install -U clovord.py
+
+What's new
+
+Channel & messages
+- channel.fetch() — load the latest channel object
+- channel.history(limit=, before=) — fetch recent messages
+- channel.send() — now returns a Message object
+- message.edit() / message.delete() — edit or remove messages
+- bot.fetch_channel(id) — fetch any channel by ID
+
+Guild & moderation
+- guild.fetch() / guild.fetch_channels()
+- guild.fetch_members() / guild.fetch_member(user_id)
+- guild.fetch_roles() / guild.create_role()
+- guild.kick(user_id) / guild.ban(user_id)
+- member.edit(nick=, roles=, mute=)
+- role.edit() / role.delete()
+
+Interactions
+- interaction.followup.send() — send follow-up messages after defer
+- interaction.followup.edit_original() — edit the slash command response
+- interaction.followup.delete_original() — delete the original response
+
+Webhooks
+- Webhook.from_url() / webhook.send() — execute webhook URLs without bot auth
+
+Quick example
+
+  @bot.tree.command(name="roles")
+  async def roles(interaction):
+      await interaction.response.defer()
+      guild = bot.get_guild(interaction.guild_id)
+      role_list = await guild.fetch_roles()
+      await interaction.followup.send(f"This server has {len(role_list)} roles.")
+
+Note: Some endpoints (e.g. channel history, message edit for bots) are wrapped in the SDK but may return 403 until the API enables bot access.
+
+Docs: https://clovord.com/developers/docs
+PyPI: https://pypi.org/project/clovord.py/0.1.27/

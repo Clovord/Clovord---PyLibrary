@@ -15,7 +15,9 @@ from .errors import ClovordExtensionError, ClovordInvalidTokenError
 from .events import EventErrorPolicy, EventManager
 from .commands import CommandTree
 from .models.guild import Guild
+from .models.channel import Channel
 from .models.user import User
+from .utils.payload import unwrap_payload
 from .gateway.events.dispatcher import dispatch_gateway_event
 from .gateway.handler import GatewayClient
 from .http import HTTPClient
@@ -137,6 +139,14 @@ class Bot:
 
     def get_guild(self, guild_id: str) -> Guild | None:
         return self._guilds.get(str(guild_id))
+
+    async def fetch_channel(self, channel_id: str) -> Channel:
+        """Fetch a channel object from the API."""
+        response = await self.http.get(f"/channels/{channel_id}")
+        payload = unwrap_payload(response)
+        if not isinstance(payload, dict):
+            raise TypeError("fetch_channel returned a non-object payload")
+        return Channel.from_dict(payload, bot=self)
 
     def _mark_ready(
         self,

@@ -1,0 +1,36 @@
+clovord.py v0.1.30
+
+Interaction follow-ups and deferred slash command responses are now more reliable. Update with:
+
+  pip install -U clovord.py
+
+What's new
+
+Interaction endpoints (Clovord-native)
+- Follow-ups no longer use webhook URLs — they use dedicated interaction routes:
+  - POST /interactions/{id}/{token}/followup
+  - PATCH /interactions/{id}/{token}/messages/@original
+  - DELETE /interactions/{id}/{token}/messages/@original
+- Webhooks stay separate user-created resources; bot slash command replies stay on interaction endpoints.
+
+Deferred command fixes (v0.1.28 – v0.1.29)
+- Failed handlers after defer() no longer leave commands stuck on "Waiting for response…"
+- Error recovery edits the deferred message instead of sending a second reply
+- interaction._deferred tracks whether the command was deferred
+- InteractionFollowup.send() and edit_original() set the Components V2 flag for Container / layout components
+
+Quick example
+
+  @bot.tree.command(name="roles")
+  async def roles(interaction):
+      await interaction.response.defer()
+      guild = bot.get_guild(interaction.guild_id)
+      roles = await guild.fetch_roles()
+      await interaction.followup.edit_original(
+          components=[Container(TextDisplay(f"**{len(roles)}** roles"))]
+      )
+
+Tip: After defer(), use interaction.followup.edit_original() to replace the placeholder — not followup.send() alone.
+
+Docs: https://clovord.com/developers/docs
+PyPI: https://pypi.org/project/clovord.py/0.1.30/

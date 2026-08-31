@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 from .ui.components import has_layout_components, serialize_components
+from .utils.payload import unwrap_payload
+
+if TYPE_CHECKING:
+    from .models.message import Message
 
 
 CommandCallback = Callable[..., Awaitable[Any]]
@@ -11,15 +15,6 @@ CommandCallback = Callable[..., Awaitable[Any]]
 # Message flags
 EPHEMERAL = 1 << 6  # 64
 IS_COMPONENTS_V2 = 1 << 15  # 32768
-
-
-def _unwrap_payload(response: dict[str, Any] | list[Any] | None) -> Any:
-    if not isinstance(response, dict):
-        return response
-    for key in ("data", "payload", "commands"):
-        if key in response:
-            return response[key]
-    return response
 
 
 class InteractionResponse:
@@ -69,7 +64,8 @@ class InteractionResponse:
             json={"type": 4, "data": data},
         )
         interaction._responded = True
-        return _unwrap_payload(response)
+        interaction._deferred = False
+        return unwrap_payload(response)
 
     async def defer(self, *, ephemeral: bool = False) -> Any:
         """Acknowledge with a deferred channel message (type 5)."""
@@ -89,7 +85,101 @@ class InteractionResponse:
             json=body,
         )
         interaction._responded = True
-        return _unwrap_payload(response)
+        interaction._deferred = True
+        return unwrap_payload(response)
+
+
+class InteractionFollowup:
+    """Send follow-up messages after the initial interaction response."""
+
+    def __init__(self, interaction: Interaction) -> None:
+        self._interaction = interaction
+
+    @property
+    def _path(self) -> str:
+        interaction_id = self._interaction.id
+        token = self._interaction.token
+        if not interaction_id or not token:
+            raise RuntimeError("Interaction is missing id/token")
+        return f"/interactions/{interaction_id}/{token}"
+
+    async def send(
+        self,
+        content: str | None = None,
+        *,
+        components: list[Any] | None = None,
+        ephemeral: bool = False,
+        flags: int | None = None,
+    ) -> Message:
+        from .models.message import Message
+
+        serialized = serialize_components(components) if components is not None else None
+        body: dict[str, Any] = {}
+        if content is not None:
+            body["content"] = content
+        if serialized is not None:
+            body["components"] = serialized
+        resolved_flags = 0 if flags is None else int(flags)
+        if ephemeral:
+            resolved_flags |= EPHEMERAL
+        if serialized and has_layout_components(serialized):
+            resolved_flags |= IS_COMPONENTS_V2
+        if resolved_flags:
+            body["flags"] = resolved_flags
+        if not body:
+            raise ValueError("send requires content and/or components")
+
+        response = await self._interaction._bot.http.post(
+            f"{self._path}/followup",
+            json=body,
+            auth=False,
+        )
+        payload = unwrap_payload(response)
+        if not isinstance(payload, dict):
+            raise TypeError("InteractionFollowup.send returned a non-object payload")
+        return Message.from_dict(payload, bot=self._interaction._bot)
+
+    async def edit_original(
+        self,
+        content: str | None = None,
+        *,
+        components: list[Any] | None = None,
+        ephemeral: bool = False,
+        flags: int | None = None,
+    ) -> Message:
+        from .models.message import Message
+
+        serialized = serialize_components(components) if components is not None else None
+        body: dict[str, Any] = {}
+        if content is not None:
+            body["content"] = content
+        if serialized is not None:
+            body["components"] = serialized
+        resolved_flags = 0 if flags is None else int(flags)
+        if ephemeral:
+            resolved_flags |= EPHEMERAL
+        if serialized and has_layout_components(serialized):
+            resolved_flags |= IS_COMPONENTS_V2
+        if resolved_flags:
+            body["flags"] = resolved_flags
+        if not body:
+            raise ValueError("edit_original requires at least one field")
+
+        response = await self._interaction._bot.http.patch(
+            f"{self._path}/messages/@original",
+            json=body,
+            auth=False,
+        )
+        payload = unwrap_payload(response)
+        if not isinstance(payload, dict):
+            raise TypeError("InteractionFollowup.edit_original returned a non-object payload")
+        return Message.from_dict(payload, bot=self._interaction._bot)
+
+    async def delete_original(self) -> None:
+        await self._interaction._bot.http.delete(
+            f"{self._path}/messages/@original",
+            auth=False,
+        )
 
 
 class Interaction:
@@ -109,7 +199,9 @@ class Interaction:
         self.member = payload.get("member") if isinstance(payload.get("member"), dict) else None
         self.command_name = str(self.data.get("name") or "")
         self._responded = False
+        self._deferred = False
         self.response = InteractionResponse(self)
+        self.followup = InteractionFollowup(self)
 
     async def response_send_message(self, content: str = "", **kwargs: Any) -> Any:
         """Deprecated alias — prefer ``interaction.response.send_message``."""
@@ -202,8 +294,26 @@ class CommandTree:
         if handler is None:
             return False
         interaction = Interaction(self._bot, payload)
-        await handler(interaction)
+        try:
+            await handler(interaction)
+        except Exception as exc:
+            await self._recover_interaction_error(interaction, exc)
         return True
+
+    async def _recover_interaction_error(self, interaction: Interaction, exc: Exception) -> None:
+        """Ensure failed slash commands still produce a user-visible response."""
+        logger = getattr(self._bot, "_logger", None)
+        message = f"Command failed: {exc}"
+        try:
+            if not interaction.response.is_done:
+                await interaction.response.send_message(message)
+            elif interaction._deferred:
+                await interaction.followup.edit_original(message)
+            else:
+                await interaction.followup.send(message)
+        except Exception as recovery_exc:
+            if logger is not None:
+                logger.exception("Failed to send command error response: %s", recovery_exc)
 
     async def upsert(
         self,
@@ -244,7 +354,7 @@ class CommandTree:
             else:
                 path = f"/applications/{app_id}/commands/{command_id}"
             response = await self._bot.http.patch(path, json=body)
-            return _unwrap_payload(response)
+            return unwrap_payload(response)
 
         if guild_id:
             path = f"/applications/{app_id}/guilds/{guild_id}/commands"
@@ -252,7 +362,7 @@ class CommandTree:
             path = f"/applications/{app_id}/commands"
 
         response = await self._bot.http.post(path, json=body)
-        return _unwrap_payload(response)
+        return unwrap_payload(response)
 
     async def sync(
         self,
@@ -283,7 +393,7 @@ class CommandTree:
             body.append(cleaned)
 
         response = await self._bot.http.put(path, json=body)
-        return _unwrap_payload(response)
+        return unwrap_payload(response)
 
     async def fetch(
         self,
@@ -297,7 +407,7 @@ class CommandTree:
         else:
             path = f"/applications/{app_id}/commands"
         response = await self._bot.http.get(path)
-        return _unwrap_payload(response)
+        return unwrap_payload(response)
 
     async def delete(
         self,

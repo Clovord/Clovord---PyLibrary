@@ -31,33 +31,29 @@ class HTTPClient:
             self._session = None
 
         if self._session is None or self._session.closed:
-            headers = {
-                "Authorization": f"Bot {token}",
-                "Content-Type": "application/json",
-            }
-            self._session = aiohttp.ClientSession(headers=headers)
+            self._session = aiohttp.ClientSession(headers={"Content-Type": "application/json"})
 
     async def close(self) -> None:
         if self._session is not None and not self._session.closed:
             await self._session.close()
         self._token = None
 
-    async def get(self, path: str, **kwargs: Any) -> dict[str, Any]:
-        return await self._request("GET", path, **kwargs)
+    async def get(self, path: str, *, auth: bool = True, **kwargs: Any) -> dict[str, Any]:
+        return await self._request("GET", path, auth=auth, **kwargs)
 
-    async def post(self, path: str, **kwargs: Any) -> dict[str, Any]:
-        return await self._request("POST", path, **kwargs)
+    async def post(self, path: str, *, auth: bool = True, **kwargs: Any) -> dict[str, Any]:
+        return await self._request("POST", path, auth=auth, **kwargs)
 
-    async def put(self, path: str, **kwargs: Any) -> dict[str, Any]:
-        return await self._request("PUT", path, **kwargs)
+    async def put(self, path: str, *, auth: bool = True, **kwargs: Any) -> dict[str, Any]:
+        return await self._request("PUT", path, auth=auth, **kwargs)
 
-    async def patch(self, path: str, **kwargs: Any) -> dict[str, Any]:
-        return await self._request("PATCH", path, **kwargs)
+    async def patch(self, path: str, *, auth: bool = True, **kwargs: Any) -> dict[str, Any]:
+        return await self._request("PATCH", path, auth=auth, **kwargs)
 
-    async def delete(self, path: str, **kwargs: Any) -> dict[str, Any]:
-        return await self._request("DELETE", path, **kwargs)
+    async def delete(self, path: str, *, auth: bool = True, **kwargs: Any) -> dict[str, Any]:
+        return await self._request("DELETE", path, auth=auth, **kwargs)
 
-    async def _request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
+    async def _request(self, method: str, path: str, *, auth: bool = True, **kwargs: Any) -> dict[str, Any]:
         if self._session is None or self._session.closed:
             raise ClovordHTTPError("HTTP client is not started")
 
@@ -66,7 +62,16 @@ class HTTPClient:
 
         try:
             for attempt in range(2):
-                async with self._session.request(method, url, **kwargs) as response:
+                request_kwargs = dict(kwargs)
+                headers = dict(request_kwargs.pop("headers", {}) or {})
+                headers.setdefault("Content-Type", "application/json")
+                if auth:
+                    if self._token is None:
+                        raise ClovordHTTPError("HTTP client is not started")
+                    headers["Authorization"] = f"Bot {self._token}"
+                request_kwargs["headers"] = headers
+
+                async with self._session.request(method, url, **request_kwargs) as response:
                     if response.status == 429 and attempt == 0:
                         await response.text()
                         retry_after = self._get_retry_after_seconds(response)

@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.30] - 2026-08-31
+### Changed
+- `InteractionFollowup` now uses Clovord-native interaction endpoints instead of webhook URLs:
+  - `POST /interactions/{id}/{token}/followup`
+  - `PATCH /interactions/{id}/{token}/messages/@original`
+  - `DELETE /interactions/{id}/{token}/messages/@original`
+
+## [0.1.29] - 2026-08-31
+### Fixed
+- Error recovery after `defer()` now edits the deferred response instead of sending a second message.
+- `Interaction` tracks whether it was deferred (`interaction._deferred`).
+
+## [0.1.28] - 2026-08-31
+### Fixed
+- Slash command handlers that fail after `defer()` no longer leave interactions stuck on "Waiting for response…".
+- `InteractionFollowup.send()` and `edit_original()` now set the Components V2 flag for layout components.
+
+## [0.1.27] - 2026-08-31
+### Added
+- REST resource methods on models: `Channel.fetch/history/send`, `Message.edit/delete`, `Guild.fetch/fetch_channels/fetch_members/fetch_member/fetch_roles/create_role/kick/ban`, `Member.edit`, `Role.edit/delete`.
+- `bot.fetch_channel()` for direct channel lookups.
+- `InteractionFollowup` (`interaction.followup.send/edit_original/delete_original`) for slash-command follow-ups.
+- `Webhook` helper for executing webhook URLs without bot auth headers.
+- Shared `unwrap_payload()` helper and per-request bot auth control in `HTTPClient`.
+
 ## [0.1.26] - 2026-08-31
 ### Added
 - Core bot lifecycle properties: `bot.is_ready`, `bot.started_at`, `bot.uptime`, `bot.guild_ids`, `bot.guilds`, and `bot.get_guild()`.

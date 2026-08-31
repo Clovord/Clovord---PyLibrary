@@ -24,5 +24,5 @@ async def handle(bot: Bot, data_full: dict | None = None, data_part: dict | None
 
     member_payload = data_part.get("member") if isinstance(data_part.get("member"), dict) else data_part
     user_payload = data_part.get("user") if isinstance(data_part.get("user"), dict) else None
-    member = Member.from_dict(member_payload, guild_id=guild_id, user=user_payload)
+    member = Member.from_dict(member_payload, guild_id=guild_id, user=user_payload, bot=bot)
     await bot.events.dispatch(INTERNAL_EVENT_NAME, member)

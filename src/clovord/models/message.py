@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from ..utils.payload import unwrap_payload
 from ._helpers import optional_str, parse_timestamp, snowflake_str
 from .channel import Channel
 from .user import User
@@ -46,7 +47,8 @@ class Message:
         author_payload = payload.get("author") if isinstance(payload.get("author"), dict) else {}
         channel_payload = payload.get("channel") if isinstance(payload.get("channel"), dict) else {}
         channel_id = snowflake_str(channel_payload.get("id") or payload.get("channel_id"))
-        guild_id = optional_str(payload.get("guild_id"))
+        guild_payload = payload.get("guild") if isinstance(payload.get("guild"), dict) else {}
+        guild_id = optional_str(payload.get("guild_id")) or optional_str(guild_payload.get("id"))
         if guild_id is None and isinstance(channel_payload, dict):
             guild_id = optional_str(channel_payload.get("guild_id"))
 
@@ -61,3 +63,41 @@ class Message:
             edited_timestamp=parse_timestamp(payload.get("edited_timestamp")),
             raw=dict(payload),
         )
+
+    def _require_bot(self) -> Any:
+        if self.channel._bot is None:
+            raise RuntimeError("Message is missing bot context")
+        return self.channel._bot
+
+    async def edit(
+        self,
+        content: str | None = None,
+        *,
+        components: list[dict[str, Any]] | None = None,
+        **extra: Any,
+    ) -> Message:
+        """Edit this message."""
+        bot = self._require_bot()
+        body: dict[str, Any] = {}
+        if content is not None:
+            body["content"] = content
+        if components is not None:
+            body["components"] = components
+        if extra:
+            body.update(extra)
+        if not body:
+            raise ValueError("edit requires at least one field")
+
+        response = await bot.http.patch(
+            f"/channels/{self.channel_id}/messages/{self.id}",
+            json=body,
+        )
+        payload = unwrap_payload(response)
+        if not isinstance(payload, dict):
+            raise TypeError("Message.edit returned a non-object payload")
+        return Message.from_dict(payload, bot=bot)
+
+    async def delete(self) -> None:
+        """Delete this message."""
+        bot = self._require_bot()
+        await bot.http.delete(f"/channels/{self.channel_id}/messages/{self.id}")
