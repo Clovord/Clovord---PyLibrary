@@ -179,3 +179,26 @@ class Guild:
         response = await bot.http.post(f"/guilds/{self.id}/settings/bans", json=body)
         payload = unwrap_payload(response)
         return payload if isinstance(payload, dict) else {"raw": payload}
+
+    async def unban(
+        self,
+        user_id: str,
+        *,
+        reason: str | None = None,
+        silent: bool = False,
+    ) -> dict[str, Any]:
+        bot = self._require_bot()
+        params: dict[str, Any] = {}
+        if reason is not None:
+            params["reason"] = reason
+        if silent:
+            params["silent"] = "true"
+        delete_kwargs: dict[str, Any] = {}
+        if params:
+            delete_kwargs["params"] = params
+        response = await bot.http.delete(
+            f"/guilds/{self.id}/settings/bans/{user_id}",
+            **delete_kwargs,
+        )
+        payload = unwrap_payload(response)
+        return payload if isinstance(payload, dict) else {"raw": payload}

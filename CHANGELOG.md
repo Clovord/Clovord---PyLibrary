@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.35] - 2026-09-06
+
+### Added
+- `Guild.unban()` for `DELETE /guilds/{guild_id}/settings/bans/{user_id}`
+
 ## [0.1.34] - 2026-08-31
 ### Fixed
 - Remove `reason` and `sources` from `DomainlistEntry`; bot API responses do not expose these fields.
