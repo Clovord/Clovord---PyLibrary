@@ -4,10 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.1.36] - 2026-09-06
+
+### Changed
+- Guild ban/unban paths no longer include `/settings` (`/guilds/{id}/bans`).
+
 ## [0.1.35] - 2026-09-06
 
 ### Added
-- `Guild.unban()` for `DELETE /guilds/{guild_id}/settings/bans/{user_id}`
+- `Guild.unban()` for `DELETE /guilds/{guild_id}/bans/{user_id}`
 
 ## [0.1.34] - 2026-08-31
 ### Fixed

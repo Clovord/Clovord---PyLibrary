@@ -176,7 +176,7 @@ class Guild:
             body["duration"] = duration
         if note is not None:
             body["note"] = note
-        response = await bot.http.post(f"/guilds/{self.id}/settings/bans", json=body)
+        response = await bot.http.post(f"/guilds/{self.id}/bans", json=body)
         payload = unwrap_payload(response)
         return payload if isinstance(payload, dict) else {"raw": payload}
 
@@ -197,7 +197,7 @@ class Guild:
         if params:
             delete_kwargs["params"] = params
         response = await bot.http.delete(
-            f"/guilds/{self.id}/settings/bans/{user_id}",
+            f"/guilds/{self.id}/bans/{user_id}",
             **delete_kwargs,
         )
         payload = unwrap_payload(response)
